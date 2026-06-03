@@ -1,0 +1,2415 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MultiSport Pro - Ultimate Training System v6.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sidebar-link.active { background-color: #2563eb; color: white; }
+        .drag-over { border: 2px dashed #2563eb; background-color: #f0f6ff; }
+        .dark .drag-over { border: 2px dashed #3b82f6; background-color: #1e293b; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        .dark ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; }
+
+        /* Mobile bottom nav */
+        #bottom-nav { display: none; }
+        #desktop-sidebar { display: flex; }
+        #mobile-header { display: none; }
+        #mobile-menu-overlay { display: none; }
+
+        @media (max-width: 767px) {
+            #desktop-sidebar { display: none !important; }
+            #bottom-nav { display: flex !important; }
+            #mobile-header { display: flex !important; }
+            #desktop-topbar { display: none !important; }
+            #app-main { flex-direction: column !important; }
+            .tab-content { padding: 1rem !important; padding-bottom: 5rem !important; }
+            #mobile-menu-overlay.open { display: flex !important; }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-sans antialiased transition-colors duration-200">
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="hidden fixed inset-0 bg-slate-900 flex items-center justify-center z-[100]">
+        <div class="bg-white dark:bg-slate-950 rounded-2xl shadow-2xl border dark:border-slate-800 p-8 w-full max-w-sm">
+            <div class="text-center mb-6">
+                <i class="fa-solid fa-heart-pulse text-blue-500 text-4xl mb-3"></i>
+                <h1 class="text-2xl font-black text-slate-900 dark:text-white">MultiSport Pro</h1>
+                <p class="text-xs text-slate-500 mt-1">Bitte einloggen um fortzufahren</p>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">E-Mail</label>
+                    <input type="email" id="login-email" placeholder="deine@email.de" class="w-full border dark:border-slate-700 p-2.5 text-sm rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Passwort</label>
+                    <input type="password" id="login-password" placeholder="••••••••" class="w-full border dark:border-slate-700 p-2.5 text-sm rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100" onkeydown="if(event.key==='Enter') doLogin()">
+                </div>
+                <div id="login-error" class="hidden text-xs text-red-600 dark:text-red-400 font-semibold"></div>
+                <button onclick="doLogin()" id="login-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3 rounded-lg transition text-sm">
+                    Einloggen
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-main" class="hidden flex h-screen overflow-hidden">
+
+        <!-- DESKTOP SIDEBAR -->
+        <div id="desktop-sidebar" class="w-64 bg-slate-950 text-white flex flex-col justify-between flex-shrink-0">
+            <div class="p-5 overflow-y-auto flex-1">
+                <h1 class="text-xl font-bold tracking-wider flex items-center gap-2 mb-4">
+                    <i class="fa-solid fa-heart-pulse text-blue-500"></i> MultiSport Pro
+                </h1>
+                <div class="p-3 bg-slate-900 rounded text-xs border border-slate-800 mb-6">
+                    <p class="font-semibold text-blue-400 mb-1">Athleten-Profil (34J, M)</p>
+                    <p>Gewicht: 65 kg | Größe: 176 cm</p>
+                    <p>FTP: 175 W | Max HF: 195 | Ruhe HF: 50</p>
+                    <p>VO2 Max: 54</p>
+                </div>
+                <nav class="space-y-1">
+                    <button onclick="switchTab('dashboard')" id="btn-dashboard" class="sidebar-link w-full text-left px-4 py-2.5 rounded transition flex items-center gap-3 text-slate-400 hover:bg-slate-900 active">
+                        <i class="fa-solid fa-chart-pie w-5"></i> Dashboard & Ziele
+                    </button>
+                    <button onclick="switchTab('planer')" id="btn-planer" class="sidebar-link w-full text-left px-4 py-2.5 rounded transition flex items-center gap-3 text-slate-400 hover:bg-slate-900">
+                        <i class="fa-solid fa-calendar-plus w-5"></i> Planungs-Kalender
+                    </button>
+                    <button onclick="switchTab('tracker')" id="btn-tracker" class="sidebar-link w-full text-left px-4 py-2.5 rounded transition flex items-center gap-3 text-slate-400 hover:bg-slate-900">
+                        <i class="fa-solid fa-calendar-check w-5"></i> Tracking-Kalender
+                    </button>
+                    <button onclick="switchTab('vergleich')" id="btn-vergleich" class="sidebar-link w-full text-left px-4 py-2.5 rounded transition flex items-center gap-3 text-slate-400 hover:bg-slate-900">
+                        <i class="fa-solid fa-scale-balanced w-5"></i> Plan vs. Ist Vergleich
+                    </button>
+                    <button onclick="switchTab('gesundheit')" id="btn-gesundheit" class="sidebar-link w-full text-left px-4 py-2.5 rounded transition flex items-center gap-3 text-slate-400 hover:bg-slate-900">
+                        <i class="fa-solid fa-house-medical w-5"></i> Gesundheit & Verlauf
+                    </button>
+                    <button onclick="switchTab('aktivitaeten')" id="btn-aktivitaeten" class="sidebar-link w-full text-left px-4 py-2.5 rounded transition flex items-center gap-3 text-slate-400 hover:bg-slate-900">
+                        <i class="fa-solid fa-list w-5"></i> Alle Aktivitäten
+                    </button>
+                    <button onclick="switchTab('jahresrueckblick')" id="btn-jahresrueckblick" class="sidebar-link w-full text-left px-4 py-2.5 rounded transition flex items-center gap-3 text-slate-400 hover:bg-slate-900">
+                        <i class="fa-solid fa-star w-5"></i> Jahresrückblick
+                    </button>
+                    <button onclick="switchTab('strava')" id="btn-strava" class="sidebar-link w-full text-left px-4 py-2.5 rounded transition flex items-center gap-3 text-slate-400 hover:bg-slate-900">
+                        <i class="fa-solid fa-file-arrow-up w-5"></i> FIT Import
+                    </button>
+                </nav>
+            </div>
+            <div class="p-4 bg-slate-950 text-center text-xs text-slate-600 border-t border-slate-900">
+                MultiSport Pro &copy; 2026
+            </div>
+        </div>
+
+        <!-- MOBILE SLIDE-OUT MENU OVERLAY -->
+        <div id="mobile-menu-overlay" onclick="closeMobileMenu()" class="fixed inset-0 bg-black/60 z-40 items-end justify-start">
+        </div>
+        <div id="mobile-menu-drawer" class="fixed top-0 left-0 h-full w-72 bg-slate-950 text-white z-50 transform -translate-x-full transition-transform duration-300 flex flex-col">
+            <div class="p-5 flex items-center justify-between border-b border-slate-800">
+                <h1 class="text-lg font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-heart-pulse text-blue-500"></i> MultiSport Pro
+                </h1>
+                <button onclick="closeMobileMenu()" class="text-slate-400 hover:text-white text-xl"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-3 bg-slate-900 mx-4 mt-4 rounded text-xs border border-slate-800">
+                <p class="font-semibold text-blue-400 mb-1">Athleten-Profil (34J, M)</p>
+                <p>Gewicht: 65 kg | FTP: 175 W | VO2 Max: 54</p>
+            </div>
+            <nav class="space-y-1 p-4 flex-1 overflow-y-auto">
+                <button onclick="switchTab('dashboard');closeMobileMenu()" class="mobile-menu-link sidebar-link w-full text-left px-4 py-3 rounded transition flex items-center gap-3 text-slate-400 hover:bg-slate-900">
+                    <i class="fa-solid fa-chart-pie w-5"></i> Dashboard & Ziele
+                </button>
+                <button onclick="switchTab('planer');closeMobileMenu()" class="mobile-menu-link sidebar-link w-full text-left px-4 py-3 rounded transition flex items-center gap-3 text-slate-400 hover:bg-slate-900">
+                    <i class="fa-solid fa-calendar-plus w-5"></i> Planungs-Kalender
+                </button>
+                <button onclick="switchTab('tracker');closeMobileMenu()" class="mobile-menu-link sidebar-link w-full text-left px-4 py-3 rounded transition flex items-center gap-3 text-slate-400 hover:bg-slate-900">
+                    <i class="fa-solid fa-calendar-check w-5"></i> Tracking-Kalender
+                </button>
+                <button onclick="switchTab('vergleich');closeMobileMenu()" class="mobile-menu-link sidebar-link w-full text-left px-4 py-3 rounded transition flex items-center gap-3 text-slate-400 hover:bg-slate-900">
+                    <i class="fa-solid fa-scale-balanced w-5"></i> Plan vs. Ist
+                </button>
+                <button onclick="switchTab('gesundheit');closeMobileMenu()" class="mobile-menu-link sidebar-link w-full text-left px-4 py-3 rounded transition flex items-center gap-3 text-slate-400 hover:bg-slate-900">
+                    <i class="fa-solid fa-house-medical w-5"></i> Gesundheit
+                </button>
+                <button onclick="switchTab('aktivitaeten');closeMobileMenu()" class="mobile-menu-link sidebar-link w-full text-left px-4 py-3 rounded transition flex items-center gap-3 text-slate-400 hover:bg-slate-900">
+                    <i class="fa-solid fa-list w-5"></i> Alle Aktivitäten
+                </button>
+                <button onclick="switchTab('jahresrueckblick');closeMobileMenu()" class="mobile-menu-link sidebar-link w-full text-left px-4 py-3 rounded transition flex items-center gap-3 text-slate-400 hover:bg-slate-900">
+                    <i class="fa-solid fa-star w-5"></i> Jahresrückblick
+                </button>
+                <button onclick="switchTab('strava');closeMobileMenu()" class="mobile-menu-link sidebar-link w-full text-left px-4 py-3 rounded transition flex items-center gap-3 text-slate-400 hover:bg-slate-900">
+                    <i class="fa-solid fa-file-arrow-up w-5"></i> FIT Import
+                </button>
+            </nav>
+            <div class="p-4 border-t border-slate-800 flex gap-2">
+                <button onclick="toggleDarkMode()" class="flex-1 p-2 bg-slate-800 text-slate-300 rounded-lg text-xs font-bold flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-moon dark:hidden"></i><i class="fa-solid fa-sun hidden dark:inline"></i> Theme
+                </button>
+                <button onclick="changeYear(-1)" class="p-2 bg-slate-800 text-slate-300 rounded-lg text-xs font-bold"><i class="fa-solid fa-chevron-left"></i></button>
+                <span class="p-2 text-white font-black text-sm flex items-center" id="mobile-year-display">2026</span>
+                <button onclick="changeYear(1)" class="p-2 bg-slate-800 text-slate-300 rounded-lg text-xs font-bold"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>
+
+        <div class="flex-1 flex flex-col overflow-hidden min-w-0">
+
+            <!-- MOBILE HEADER -->
+            <div id="mobile-header" class="bg-slate-950 text-white px-4 py-3 flex items-center justify-between flex-shrink-0">
+                <button onclick="openMobileMenu()" class="text-slate-300 text-xl p-1"><i class="fa-solid fa-bars"></i></button>
+                <h1 class="text-sm font-black flex items-center gap-2"><i class="fa-solid fa-heart-pulse text-blue-500"></i> MultiSport Pro</h1>
+                <span id="mobile-active-tab-label" class="text-xs text-slate-400 font-semibold">Dashboard</span>
+            </div>
+
+            <!-- DESKTOP TOPBAR -->
+            <div id="desktop-topbar" class="bg-white dark:bg-slate-950 border-b border-gray-200 dark:border-slate-800 px-6 py-3 flex justify-between items-center flex-shrink-0">
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-semibold text-slate-500 dark:text-slate-400">Aktives Anzeigejahr:</span>
+                    <span id="current-year-display" class="text-xl font-black text-slate-900 dark:text-white">2026</span>
+                </div>
+                <div class="flex gap-1 items-center">
+                    <button onclick="toggleDarkMode()" class="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition mr-2">
+                        <i class="fa-solid fa-moon dark:hidden"></i>
+                        <i class="fa-solid fa-sun hidden dark:inline"></i>
+                    </button>
+                    <button onclick="changeYear(-1)" class="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition"><i class="fa-solid fa-chevron-left"></i> Vorheriges Jahr</button>
+                    <button onclick="changeYear(1)" class="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition">Nächstes Jahr <i class="fa-solid fa-chevron-right"></i></button>
+                    <button onclick="runDiagnostics()" class="p-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded-lg text-xs font-bold transition ml-2" title="Verbindungstest">🔧 Test</button>
+                </div>
+            </div>
+            <div id="debug-output" class="hidden bg-yellow-50 dark:bg-yellow-950 border-b border-yellow-200 dark:border-yellow-800 px-6 py-3 text-xs font-mono text-yellow-900 dark:text-yellow-200 space-y-0.5"></div>
+
+            <div class="flex-1 overflow-y-auto">
+                
+                <div id="tab-dashboard" class="tab-content p-6 space-y-6">
+                    <!-- Belastungsampel -->
+                    <div id="belastungsampel-widget" class="rounded-xl border p-4 bg-white dark:bg-slate-950 border-gray-200 dark:border-slate-800 shadow-sm">
+                        <h2 class="text-sm font-black uppercase tracking-wide text-slate-600 dark:text-slate-400 mb-3 flex items-center gap-2"><i class="fa-solid fa-traffic-light"></i> Wöchentliche Belastungsampel</h2>
+                        <div id="belastungsampel-content" class="text-xs text-slate-500 italic">Wird geladen…</div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-white dark:bg-slate-950 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800">
+                            <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-slate-800 dark:text-white"><i class="fa-solid fa-trophy text-amber-500"></i> Geplante Wettkämpfe</h2>
+                            <form id="race-form" class="grid grid-cols-2 gap-2 mb-4">
+                                <input type="text" id="race-name" placeholder="z.B. Halbmarathon Köln" class="border dark:border-slate-700 p-2 text-sm rounded bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100" required>
+                                <input type="date" id="race-date" class="border dark:border-slate-700 p-2 text-sm rounded bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100" required>
+                                <button type="submit" class="col-span-2 bg-blue-600 text-white p-2 text-sm rounded hover:bg-blue-700 font-semibold transition">Wettkampf hinzufügen</button>
+                            </form>
+                            <div id="race-list" class="space-y-2"></div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-950 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800">
+                            <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-slate-800 dark:text-white"><i class="fa-solid fa-bullseye text-emerald-500"></i> Langzeitziele</h2>
+                            <form id="goal-form" class="flex gap-2 mb-4">
+                                <input type="text" id="goal-text" placeholder="z.B. FTP auf 200W steigern" class="flex-1 border dark:border-slate-700 p-2 text-sm rounded bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100" required>
+                                <input type="month" id="goal-date" class="border dark:border-slate-700 p-2 text-sm rounded bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+                                <button type="submit" class="bg-emerald-600 text-white px-4 py-2 text-sm rounded hover:bg-emerald-700 font-semibold transition">Hinzufügen</button>
+                            </form>
+                            <ul id="goal-list" class="space-y-2 text-sm text-slate-700 dark:text-slate-300"></ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-planer" class="tab-content p-6 hidden space-y-6">
+                    <div class="bg-white dark:bg-slate-950 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800">
+                        <h2 class="text-lg font-bold mb-2 flex items-center gap-2 text-blue-600 dark:text-blue-400"><i class="fa-solid fa-wand-magic-sparkles"></i> Intelligente Trainingspläne verwalten</h2>
+                        
+                        <div class="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 mb-6 space-y-4 text-xs">
+                            <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
+                                <div>
+                                    <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Startwoche (Montag):</label>
+                                    <input type="date" id="generator-start-date" class="border dark:border-slate-700 p-2 rounded w-full bg-white dark:bg-slate-800 text-sm">
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">End-Kriterium des Plans:</label>
+                                    <select id="generator-end-mode" onchange="toggleEndModeFields()" class="border dark:border-slate-700 p-2 rounded w-full bg-white dark:bg-slate-800 text-sm">
+                                        <option value="none">Kein festes Ende</option>
+                                        <option value="date">Festes Datum</option>
+                                        <option value="race">An Wettkampf gekoppelt (Tapering)</option>
+                                    </select>
+                                    <input type="date" id="generator-end-date" class="border dark:border-slate-700 p-2 rounded w-full bg-white dark:bg-slate-800 text-sm mt-1 hidden">
+                                    <select id="generator-end-race" class="border dark:border-slate-700 p-2 rounded w-full bg-white dark:bg-slate-800 text-sm mt-1 hidden"></select>
+                                </div>
+                                <div class="col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" id="generator-sports-container">
+                                    </div>
+                            </div>
+                            <button id="submit-plan-btn" onclick="generateAndSaveSmartPlan()" class="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition shadow-sm">Plan berechnen & in den Kalender schreiben</button>
+                        </div>
+
+                        <div class="mb-6">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Aktive übergeordnete Pläne</h3>
+                            <div id="active-plans-list" class="space-y-2"></div>
+                        </div>
+
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Planungs-Jahresübersicht (Klicke auf Einheiten zum Editieren)</h3>
+                        <div id="plan-year-container" class="space-y-4 max-h-[60vh] overflow-y-auto border dark:border-slate-800 p-4 rounded-xl bg-slate-50/50 dark:bg-slate-900/50"></div>
+                    </div>
+                </div>
+
+                <div id="tab-tracker" class="tab-content p-6 hidden space-y-6">
+                    <div class="bg-white dark:bg-slate-950 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800">
+                        <h2 class="text-lg font-bold mb-1 flex items-center gap-2 text-emerald-600 dark:text-emerald-400"><i class="fa-solid fa-calendar-check"></i> Trainings-Tracking & Aktivitäten-Eingabe</h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Bewege die Sportarten per Drag & Drop auf einen beliebigen Tag im Kalender, um ein Training aufzuzeichnen.</p>
+
+                        <div id="drag-badges-container" class="flex flex-wrap gap-2 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl mb-6 border border-slate-200 dark:border-slate-800"></div>
+
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tracking-Jahresübersicht (Inklusive Plan-Soll Vorschau)</h3>
+                        <div id="track-year-container" class="space-y-4 max-h-[60vh] overflow-y-auto border dark:border-slate-800 p-4 rounded-xl bg-slate-50/50 dark:bg-slate-900/50"></div>
+                    </div>
+                </div>
+
+                <div id="tab-vergleich" class="tab-content p-6 hidden space-y-6">
+                    <div class="bg-white dark:bg-slate-950 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800">
+                        <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-slate-800 dark:text-white"><i class="fa-solid fa-scale-balanced text-blue-600"></i> Progressions- & Abweichungsvergleich</h2>
+                        <div id="comparison-year-container" class="space-y-4 max-h-[70vh] overflow-y-auto border dark:border-slate-800 p-4 rounded-xl bg-slate-50/50 dark:bg-slate-900/50"></div>
+                    </div>
+                </div>
+
+
+
+                <div id="tab-gesundheit" class="tab-content p-6 hidden space-y-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="bg-white dark:bg-slate-950 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 lg:col-span-1">
+                            <h2 class="text-lg font-bold mb-4 text-rose-600 flex items-center gap-2"><i class="fa-solid fa-kit-medical"></i> Akut-Meldung einreichen</h2>
+                            <div class="space-y-3 text-xs">
+                                <div>
+                                    <label class="block font-medium mb-1">Typus:</label>
+                                    <select id="health-main-type" onchange="handleHealthTypeChange()" class="w-full border dark:border-slate-700 p-2 rounded bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+                                        <option value="Verletzung">Verletzung</option>
+                                        <option value="Krankheit">Krankheit</option>
+                                    </select>
+                                </div>
+                                
+                                <div id="cascading-injury-box" class="space-y-3">
+                                    <div>
+                                        <label class="block font-medium mb-1">Hauptregion (Ebene 1):</label>
+                                        <select id="inj-l1" onchange="updateAnatomyL2()" class="w-full border dark:border-slate-700 p-2 rounded bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"></select>
+                                    </div>
+                                    <div>
+                                        <label class="block font-medium mb-1">Abschnitt (Ebene 2):</label>
+                                        <select id="inj-l2" onchange="updateAnatomyL3()" class="w-full border dark:border-slate-700 p-2 rounded bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"></select>
+                                    </div>
+                                    <div>
+                                        <label class="block font-medium mb-1">Gewebe/Struktur (Ebene 3):</label>
+                                        <select id="inj-l3" onchange="updateAnatomyL4()" class="w-full border dark:border-slate-700 p-2 rounded bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"></select>
+                                    </div>
+                                    <div>
+                                        <label class="block font-medium mb-1">Spezifisches Element (Ebene 4):</label>
+                                        <select id="inj-l4" class="w-full border dark:border-slate-700 p-2 rounded bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100"></select>
+                                    </div>
+                                </div>
+
+                                <div id="illness-name-box" class="hidden">
+                                    <label class="block font-medium mb-1">Krankheitsbezeichnung:</label>
+                                    <input type="text" id="illness-title" placeholder="z.B. Grippaler Infekt" class="w-full border dark:border-slate-700 p-2 rounded bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+                                </div>
+
+                                <div>
+                                    <label class="block font-medium mb-1">Ausbruchsdatum:</label>
+                                    <input type="date" id="health-start-date" class="w-full border dark:border-slate-700 p-2 rounded bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+                                </div>
+                                <div>
+                                    <label class="block font-medium mb-1">Initiale Intensität (1-10):</label>
+                                    <input type="range" id="health-init-intensity" min="1" max="10" value="5" class="w-full">
+                                </div>
+                                <div>
+                                    <label class="block font-medium mb-1">Kommentar:</label>
+                                    <input type="text" id="health-init-comment" placeholder="Symptome, Status..." class="w-full border dark:border-slate-700 p-2 rounded bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+                                </div>
+                                <button onclick="registerHealthIssue()" class="w-full bg-rose-600 text-white py-2 rounded-lg font-bold hover:bg-rose-700 transition">Fall anlegen</button>
+                            </div>
+                        </div>
+
+                        <div class="bg-white dark:bg-slate-950 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 lg:col-span-2 space-y-6">
+                            <div>
+                                <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Aktive Fälle (In Behandlung/Beobachtung)</h2>
+                                <div id="active-health-list" class="space-y-3"></div>
+                            </div>
+                            <hr class="dark:border-slate-800">
+                            <div>
+                                <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Überstandene Verletzungen & Krankheiten</h2>
+                                <div id="resolved-health-list" class="space-y-3"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-aktivitaeten" class="tab-content p-6 hidden space-y-6">
+                    <div class="bg-white dark:bg-slate-950 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-list text-slate-700 dark:text-slate-300"></i> Gesamtes Aktivitätslogbuch</h2>
+                            <button onclick="deleteAllActivities()" class="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900 rounded-lg text-xs font-bold transition">
+                                <i class="fa-solid fa-trash"></i> Alle löschen
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-100 dark:bg-slate-900 border-b dark:border-slate-800 text-slate-700 dark:text-slate-300">
+                                        <th class="p-3 font-semibold">Datum</th>
+                                        <th class="p-3 font-semibold">Sportart</th>
+                                        <th class="p-3 font-semibold">Umfang</th>
+                                        <th class="p-3 font-semibold">Leistungswerte</th>
+                                        <th class="p-3 font-semibold">Kommentar</th>
+                                        <th class="p-3 font-semibold">Optionen</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="global-log-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-jahresrueckblick" class="tab-content p-6 hidden space-y-6">
+                    <div id="jahresrueckblick-content"></div>
+                </div>
+
+                <div id="tab-strava" class="tab-content p-6 hidden space-y-6">
+                    <div class="bg-white dark:bg-slate-950 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm p-6">
+                        <div class="flex items-center gap-3 mb-5">
+                            <span class="text-3xl">📂</span>
+                            <div>
+                                <h2 class="text-lg font-black text-slate-900 dark:text-white">FIT-Dateien importieren</h2>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Mehrere .fit Dateien auf einmal – direkt aus Coros exportiert</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-900 rounded-lg p-4 mb-5 text-xs text-slate-700 dark:text-slate-300 space-y-1">
+                            <p class="font-black text-blue-800 dark:text-blue-200 uppercase tracking-wide text-[10px] mb-2">So exportierst du FIT-Dateien aus Coros</p>
+                            <ol class="list-decimal list-inside space-y-1">
+                                <li>Öffne die <strong>Coros App</strong> → Profil → eine Aktivität antippen</li>
+                                <li>Oben rechts auf die <strong>drei Punkte</strong> → „Daten exportieren"</li>
+                                <li>Format <strong>.fit</strong> wählen → Datei speichern</li>
+                                <li>Alle gewünschten .fit Dateien hier unten zusammen hochladen</li>
+                            </ol>
+                        </div>
+
+                        <!-- Drop Zone -->
+                        <div id="fit-dropzone"
+                            ondragover="fitDragOver(event)" ondragleave="fitDragLeave(event)" ondrop="fitDrop(event)"
+                            onclick="document.getElementById('fit-file-input').click()"
+                            class="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-10 text-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 transition-all">
+                            <div class="text-4xl mb-3">📁</div>
+                            <p class="font-black text-slate-700 dark:text-slate-300 text-sm">FIT-Dateien hier ablegen</p>
+                            <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">oder klicken zum Auswählen – mehrere Dateien möglich</p>
+                            <input type="file" id="fit-file-input" accept=".fit" multiple class="hidden" onchange="fitFilesSelected(this.files)">
+                        </div>
+
+                        <!-- Progress -->
+                        <div id="fit-progress-area" class="hidden mt-5">
+                            <div class="flex justify-between items-center mb-2 text-xs font-semibold text-slate-600 dark:text-slate-400">
+                                <span id="fit-progress-label">Verarbeite…</span>
+                                <span id="fit-progress-count"></span>
+                            </div>
+                            <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 mb-4">
+                                <div id="fit-progress-bar" class="bg-blue-500 h-2 rounded-full transition-all" style="width:0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Import Log -->
+                    <div id="fit-import-log" class="hidden bg-white dark:bg-slate-950 rounded-xl border border-gray-200 dark:border-slate-800 p-5">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-sm font-black text-slate-800 dark:text-white">Import-Protokoll</h3>
+                            <button onclick="fitClearLog()" class="text-xs text-slate-400 hover:text-red-500 font-bold transition">Leeren</button>
+                        </div>
+                        <div id="fit-import-log-content" class="space-y-1 max-h-72 overflow-y-auto text-xs"></div>
+                        <div id="fit-import-summary" class="mt-3 pt-3 border-t dark:border-slate-800 text-xs font-black text-slate-700 dark:text-slate-300 hidden"></div>
+                    </div>
+                </div>
+
+            </div><!-- /flex-1 overflow-y-auto -->
+
+            <!-- MOBILE BOTTOM NAV -->
+            <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-950 border-t border-gray-200 dark:border-slate-800 z-30 flex items-center justify-around px-2 py-1">
+                <button onclick="switchTab('dashboard')" id="mob-btn-dashboard" class="mob-nav-btn flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl text-slate-400 transition min-w-[52px]">
+                    <i class="fa-solid fa-chart-pie text-lg"></i>
+                    <span class="text-[9px] font-bold">Dashboard</span>
+                </button>
+                <button onclick="switchTab('tracker')" id="mob-btn-tracker" class="mob-nav-btn flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl text-slate-400 transition min-w-[52px]">
+                    <i class="fa-solid fa-calendar-check text-lg"></i>
+                    <span class="text-[9px] font-bold">Tracker</span>
+                </button>
+                <button onclick="switchTab('planer')" id="mob-btn-planer" class="mob-nav-btn flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl text-slate-400 transition min-w-[52px]">
+                    <i class="fa-solid fa-calendar-plus text-lg"></i>
+                    <span class="text-[9px] font-bold">Planer</span>
+                </button>
+                <button onclick="switchTab('gesundheit')" id="mob-btn-gesundheit" class="mob-nav-btn flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl text-slate-400 transition min-w-[52px]">
+                    <i class="fa-solid fa-house-medical text-lg"></i>
+                    <span class="text-[9px] font-bold">Gesundheit</span>
+                </button>
+                <button onclick="openMobileMenu()" class="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl text-slate-400 transition min-w-[52px]">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                    <span class="text-[9px] font-bold">Mehr</span>
+                </button>
+            </nav>
+
+        </div><!-- /flex-1 flex flex-col -->
+    </div><!-- /app-main -->
+
+    <div id="tracking-modal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-xs hidden flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-xl w-full max-w-sm shadow-xl border dark:border-slate-800">
+            <h3 id="modal-title" class="text-sm font-black text-slate-900 dark:text-white mb-4 uppercase tracking-wide">Einheit protokollieren</h3>
+            <input type="hidden" id="modal-date">
+            <input type="hidden" id="modal-sport">
+            <input type="hidden" id="modal-id">
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label id="modal-vol-label" class="block font-medium mb-1">Hauptvolumen:</label>
+                    <input type="number" step="0.01" id="modal-vol" oninput="autoCalculatePace()" class="w-full border dark:border-slate-700 p-2 rounded bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                </div>
+                <div id="extended-tracking-fields" class="border-t dark:border-slate-800 pt-2 space-y-2">
+                    <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Leistungsdaten (Optional)</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div id="modal-field-km-container">
+                            <label class="block font-medium mb-0.5">Kilometer (km):</label>
+                            <input type="number" step="0.01" id="modal-km" oninput="autoCalculatePace()" class="w-full border dark:border-slate-700 p-1.5 rounded bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                        </div>
+                        <div id="modal-field-duration-container">
+                            <label class="block font-medium mb-0.5">Dauer (Minuten):</label>
+                            <input type="number" id="modal-duration" oninput="autoCalculatePace()" class="w-full border dark:border-slate-700 p-1.5 rounded bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div id="modal-field-pace">
+                            <label class="block font-medium mb-0.5">Pace (MM:SS):</label>
+                            <input type="text" id="modal-pace" placeholder="--:--" class="w-full border dark:border-slate-700 p-1.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100" readonly>
+                        </div>
+                        <div id="modal-field-watt">
+                            <label class="block font-medium mb-0.5">Leistung (Watt):</label>
+                            <input type="number" id="modal-watt" class="w-full border dark:border-slate-700 p-1.5 rounded bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block font-medium mb-0.5">Durchschnitts-HF (bpm):</label>
+                            <input type="number" id="modal-hr" class="w-full border dark:border-slate-700 p-1.5 rounded bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                        </div>
+                        <div id="modal-field-hm-container">
+                            <label class="block font-medium mb-0.5">Höhenmeter (hm):</label>
+                            <input type="number" id="modal-hm" placeholder="z.B. 250" class="w-full border dark:border-slate-700 p-1.5 rounded bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-medium mb-1">Kommentar:</label>
+                    <input type="text" id="modal-comment" class="w-full border dark:border-slate-700 p-2 rounded bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-5 text-xs">
+                <button onclick="closeTrackingModal()" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 dark:text-slate-200 font-bold rounded hover:bg-slate-200 dark:hover:bg-slate-700">Abbrechen</button>
+                <button onclick="saveTrackedItem()" class="px-4 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700">Bestätigen</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="health-progress-modal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-xs hidden flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-xl w-full max-w-md shadow-xl border dark:border-slate-800 overflow-y-auto max-h-[90vh]">
+            <h3 id="health-modal-title" class="text-sm font-black text-slate-900 dark:text-white mb-2 uppercase tracking-wide">Verlaufsakte</h3>
+            <input type="hidden" id="health-modal-case-id">
+            <input type="hidden" id="health-modal-edit-index" value="">
+            
+            <div class="mb-4 border dark:border-slate-800 p-3 rounded-lg bg-slate-50 dark:bg-slate-950">
+                <canvas id="health-modal-chart" class="max-h-40"></canvas>
+            </div>
+
+            <div class="border-t dark:border-slate-800 pt-3 space-y-3 text-xs">
+                <h4 id="health-entry-form-title" class="font-bold text-slate-700 dark:text-slate-300">Neuen Status-Eintrag hinzufügen</h4>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-medium mb-1">Datum:</label>
+                        <input type="date" id="health-progress-date" class="w-full border dark:border-slate-700 p-2 rounded bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                    </div>
+                    <div>
+                        <label class="block font-medium mb-1">Intensität (1-10):</label>
+                        <input type="number" id="health-progress-intensity" min="1" max="10" value="5" class="w-full border dark:border-slate-700 p-2 rounded bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-medium mb-1">Verlaufskommentar:</label>
+                    <input type="text" id="health-progress-comment" placeholder="z.B. Schmerz lässt nach..." class="w-full border dark:border-slate-700 p-2 rounded bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="saveHealthProgress()" class="flex-1 bg-slate-800 dark:bg-slate-700 text-white py-2 rounded font-bold hover:bg-slate-900 dark:hover:bg-slate-600 transition">Eintrag speichern</button>
+                    <button id="health-cancel-edit-btn" onclick="resetHealthEntryForm()" class="hidden bg-gray-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-3 py-2 rounded font-bold">Abbrechen</button>
+                </div>
+            </div>
+
+            <div class="border-t dark:border-slate-800 pt-4 mt-4">
+                <h4 class="font-bold text-xs text-slate-400 uppercase mb-2 tracking-wide">Historische Verlaufs-Logbucheinträge</h4>
+                <div id="health-timeline-logs-list" class="space-y-1.5 max-h-36 overflow-y-auto"></div>
+            </div>
+
+            <div class="flex justify-between items-center mt-5 border-t dark:border-slate-800 pt-3 text-xs">
+                <button onclick="closeHealthModal()" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 dark:text-slate-300 font-bold rounded hover:bg-slate-200 dark:hover:bg-slate-700">Schließen</button>
+                <button id="health-resolve-btn" onclick="resolveHealthIssue()" class="px-4 py-2 bg-emerald-600 text-white font-bold rounded hover:bg-emerald-700">Als geheilt markieren</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Goal Edit Modal -->
+    <div id="goal-edit-modal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-xs hidden flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-xl w-full max-w-sm shadow-xl border dark:border-slate-800">
+            <h3 class="text-sm font-black text-slate-900 dark:text-white mb-4 uppercase tracking-wide">Ziel bearbeiten</h3>
+            <input type="hidden" id="goal-edit-id">
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Ziel</label>
+                    <input type="text" id="goal-edit-text" class="w-full border dark:border-slate-700 p-2 text-sm rounded bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Zieldatum (Monat/Jahr)</label>
+                    <input type="month" id="goal-edit-date" class="w-full border dark:border-slate-700 p-2 text-sm rounded bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-5 text-xs">
+                <button onclick="closeGoalEditModal()" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 dark:text-slate-200 font-bold rounded hover:bg-slate-200 dark:hover:bg-slate-700">Abbrechen</button>
+                <button onclick="saveGoalEdit()" class="px-4 py-2 bg-emerald-600 text-white font-bold rounded hover:bg-emerald-700">Speichern</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Race Edit Modal -->
+    <div id="race-edit-modal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-xs hidden flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-xl w-full max-w-sm shadow-xl border dark:border-slate-800">
+            <h3 class="text-sm font-black text-slate-900 dark:text-white mb-4 uppercase tracking-wide">Wettkampf bearbeiten</h3>
+            <input type="hidden" id="race-edit-id">
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Name</label>
+                    <input type="text" id="race-edit-name" class="w-full border dark:border-slate-700 p-2 text-sm rounded bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Datum</label>
+                    <input type="date" id="race-edit-date" class="w-full border dark:border-slate-700 p-2 text-sm rounded bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-5 text-xs">
+                <button onclick="closeRaceEditModal()" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 dark:text-slate-200 font-bold rounded hover:bg-slate-200 dark:hover:bg-slate-700">Abbrechen</button>
+                <button onclick="saveRaceEdit()" class="px-4 py-2 bg-amber-500 text-white font-bold rounded hover:bg-amber-600">Speichern</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Race-Day Checkliste Modal -->
+    <div id="race-checklist-modal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-xs hidden flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-xl w-full max-w-md shadow-xl border dark:border-slate-800 max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="checklist-modal-title" class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wide">🏁 Race-Day Checkliste</h3>
+                <button onclick="closeChecklistModal()" class="text-slate-400 hover:text-red-500 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="checklist-categories" class="overflow-y-auto flex-1 space-y-4 pr-1"></div>
+            <div class="mt-4 pt-3 border-t dark:border-slate-800 flex justify-between items-center text-xs">
+                <span id="checklist-progress-text" class="text-slate-500 font-semibold"></span>
+                <button onclick="resetChecklist()" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 dark:text-slate-300 font-bold rounded hover:bg-slate-200 dark:hover:bg-slate-700 transition">Alles zurücksetzen</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        tailwind.config = { darkMode: 'class' };
+
+        // --- SAFE GLOBAL CONSTANTS DEFINED STRICTLY ONCE ---
+        const weekdaysDeShort = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+        
+        const sportConfig = {
+            "Krafttraining": { unit: "min", icon: "fa-dumbbell" },
+            "Laufen": { unit: "km", icon: "fa-person-running" },
+            "Indoor Laufen (Laufband)": { unit: "km", icon: "fa-person-running" },
+            "Rennrad": { unit: "min", icon: "fa-bicycle" },
+            "Indoor Rennrad": { unit: "min", icon: "fa-person-biking" },
+            "Schwimmen": { unit: "m", icon: "fa-person-swimming" },
+            "Stretching/Yoga": { unit: "min", icon: "fa-child-yoga" },
+            "Meditation": { unit: "min", icon: "fa-spa" }
+        };
+
+        const activePlanningSports = ["Krafttraining", "Laufen", "Rennrad", "Schwimmen"];
+
+        let state = {
+            year: 2026,
+            races: [],
+            goals: [],
+            smartPlans: [],
+            plannedWorkouts: {},
+            trackedActivities: [],
+            healthCases: [],
+            raceChecklists: {}
+        };
+
+        const defaultChecklist = {
+            "Ausrüstung Allgemein": ["Startnummer + Sicherheitsnadeln", "Wettkampfuhr / GPS", "Sonnenbrille", "Sonnencreme", "Wettkampfkleidung"],
+            "Laufen": ["Laufschuhe (eingelaufen!)", "Laufsocken", "Laufhose / Tri-Suit", "Stirnband / Mütze", "Laufgürtel mit Gels"],
+            "Rennrad / Triathlon": ["Rennrad (gecheckt, Reifen aufgepumpt)", "Helm (Pflicht!)", "Radschuhe + Klickpedale", "Radhandschuhe", "Trinkflaschen befüllt", "Wechselkleidung"],
+            "Ernährung & Verpflegung": ["Frühstück vorbereitet", "Gels / Riegel für Rennen", "Elektrolyte / Salztabletten", "Isotonik Trinkflasche", "Müsliriegel für nach dem Rennen"],
+            "Logistik": ["Anreise geplant / Abfahrtszeit", "Startunterlagen abgeholt", "Parkplatz / ÖPNV geklärt", "Wettervorhersage geprüft", "Handynummer Notfallkontakt dabei"]
+        };
+
+        let editingPlanId = null;
+        let healthChartInstance = null;
+
+        function getSportStyle(sport) {
+            const styles = {
+                "Krafttraining": { colorClass: "bg-purple-100 text-purple-900 border-purple-300 dark:bg-purple-950 dark:text-purple-200 dark:border-purple-800", icon: "fa-dumbbell" },
+                "Laufen": { colorClass: "bg-orange-100 text-orange-900 border-orange-300 dark:bg-orange-950 dark:text-orange-200 dark:border-orange-800", icon: "fa-person-running" },
+                "Indoor Laufen (Laufband)": { colorClass: "bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800", icon: "fa-person-running" },
+                "Rennrad": { colorClass: "bg-blue-100 text-blue-900 border-blue-300 dark:bg-blue-950 dark:text-blue-200 dark:border-blue-800", icon: "fa-bicycle" },
+                "Indoor Rennrad": { colorClass: "bg-cyan-100 text-cyan-900 border-cyan-300 dark:bg-cyan-950 dark:text-cyan-200 dark:border-cyan-800", icon: "fa-person-biking" },
+                "Schwimmen": { colorClass: "bg-teal-100 text-teal-900 border-teal-300 dark:bg-teal-950 dark:text-teal-200 dark:border-teal-800", icon: "fa-person-swimming" },
+                "Stretching/Yoga": { colorClass: "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-800", icon: "fa-child-yoga" },
+                "Meditation": { colorClass: "bg-indigo-100 text-indigo-900 border-indigo-300 dark:bg-indigo-950 dark:text-indigo-200 dark:border-indigo-800", icon: "fa-spa" }
+            };
+            return styles[sport] || { colorClass: "bg-slate-100 text-slate-900 border-slate-300 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700", icon: "fa-star" };
+        }
+
+        const anatomyDatabase = {
+            "Rumpf & Achsenskelett": {
+                "HWS / Nacken": { "Muskel/Sehne": ["M. trapezius", "M. sternocleidomastoideus"], "Knochen/Band": ["Halswirbel C1-C7", "Lig. nuchae"] },
+                "BWS / Thorax": { "Muskel/Sehne": ["M. rhomboideus", "Interkostalmuskulatur"], "Knochen/Band": ["Brustwirbel Th1-Th12", "Rippenelemente"] },
+                "LWS / Becken": { "Muskel/Sehne": ["M. erector spinae", "M. quadratus lumborum"], "Knochen/Band": ["Lendenwirbel L1-L5", "Iliosakralgelenk (ISG)"] }
+            },
+            "Obere Extremitäten": {
+                "Schultermanschette": { "Muskel/Sehne": ["M. supraspinatus", "M. infraspinatus", "Rotatorensehne"], "Knochen/Band": ["Klavikula (Schlüsselbein)", "Labrum glenoidale"] },
+                "Armgelenke": { "Muskel/Sehne": ["M. biceps brachii", "M. triceps brachii", "Extensorensehne (Ellenbogen)"], "Knochen/Band": ["Humerus (Oberarm)", "Radius/Ulna"] }
+            },
+            "Untere Extremitäten": {
+                "Oberschenkel": { "Muskel/Sehne": ["M. quadriceps femoris", "Ischiokrurale Muskulatur (Hamstrings)", "Adduktorengruppe"], "Knochen/Band": ["Femur (Oberschenkelknochen)"] },
+                "Kniekomplex": { "Muskel/Sehne": ["Patellasehne", "Quadrizepssehne-Ansatz"], "Knochen/Band": ["Vorderes Kreuzband (VKB)", "Hinteres Kreuzband", "Innenmeniskus", "Außenmeniskus"] },
+                "Unterschenkel": { "Muskel/Sehne": ["M. gastrocnemius (Wade)", "M. soleus", "Achillessehne", "Tibialis-anterior-Sehne"], "Knochen/Band": ["Tibia (Schienbein)", "Fibula (Wadenbein)"] },
+                "Fuß / Sprunggelenk": { "Muskel/Sehne": ["Plantaraponeurose (Sehnenplatte)", "M. flexor hallucis longus"], "Knochen/Band": ["Lig. talofibulare anterius (Außenband)", "Deltaband", "Kalkaneus (Fersenbein)", "Metatarsalia"] }
+            }
+        };
+
+        function formatDateDe(dateStr) {
+            if(!dateStr) return "";
+            const parts = dateStr.split('-');
+            if(parts.length === 3) return parts[2] + "." + parts[1] + "." + parts[0];
+            return dateStr;
+        }
+
+        // --- SUPABASE INIT ---
+        if(typeof supabase === 'undefined') {
+            document.body.innerHTML = '<div style="padding:2rem;font-family:sans-serif;color:red"><h2>⚠️ Fehler</h2><p>Supabase-Bibliothek konnte nicht geladen werden. Bitte Internetverbindung prüfen und Seite neu laden.</p></div>';
+            throw new Error('Supabase not loaded');
+        }
+        const SUPABASE_URL = 'https://agacndjtlbetfofgbpda.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFnYWNuZGp0bGJldGZvZmdicGRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MDg1MzQsImV4cCI6MjA5NjA4NDUzNH0.ZuUHGLVKRrcFK0JQbn8uXy23Vei1jdgt1Su_13xVpFg';
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+            auth: { persistSession: true, autoRefreshToken: true }
+        });
+        let currentUser = null;
+        let saveTimeout = null;
+        let saveIndicatorTimeout = null;
+
+        function showSaveIndicator(ok) {
+            let el = document.getElementById('save-indicator');
+            if(!el) {
+                el = document.createElement('div');
+                el.id = 'save-indicator';
+                el.style.cssText = 'position:fixed;bottom:70px;right:16px;z-index:9999;font-size:11px;font-weight:700;padding:6px 12px;border-radius:999px;transition:opacity 0.5s;';
+                document.body.appendChild(el);
+            }
+            el.textContent = ok ? '✅ Gespeichert' : '❌ Speichern fehlgeschlagen';
+            el.style.background = ok ? '#d1fae5' : '#fee2e2';
+            el.style.color = ok ? '#065f46' : '#991b1b';
+            el.style.opacity = '1';
+            clearTimeout(saveIndicatorTimeout);
+            saveIndicatorTimeout = setTimeout(() => { el.style.opacity = '0'; }, 3000);
+        }
+
+        async function doLogin() {
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+            const errEl = document.getElementById('login-error');
+            const btn = document.getElementById('login-btn');
+            errEl.classList.add('hidden');
+            btn.textContent = 'Einloggen…'; btn.disabled = true;
+            const { data, error } = await sb.auth.signInWithPassword({ email, password });
+            if(error) {
+                errEl.textContent = 'Fehler: ' + (error.message === 'Invalid login credentials' ? 'Falsche E-Mail oder Passwort.' : error.message);
+                errEl.classList.remove('hidden');
+                btn.textContent = 'Einloggen'; btn.disabled = false;
+            }
+        }
+
+        async function runDiagnostics() {
+            const out = document.getElementById('debug-output');
+            out.classList.remove('hidden');
+            out.innerHTML = '🔍 Teste Verbindung…';
+            let lines = [];
+
+            // 1. User
+            lines.push('👤 User: ' + (currentUser ? currentUser.email : '❌ nicht eingeloggt'));
+
+            // 2. Supabase erreichbar?
+            try {
+                const { data, error } = await sb.from('app_state').select('user_id').limit(1);
+                if(error) lines.push('❌ DB Lesefehler: ' + error.message + ' (Code: ' + error.code + ')');
+                else lines.push('✅ DB Lesetest: OK');
+            } catch(e) { lines.push('❌ DB Exception: ' + e.message); }
+
+            // 3. Schreibtest
+            if(currentUser) {
+                try {
+                    const { error } = await sb.from('app_state').upsert(
+                        { user_id: currentUser.id, data: state, updated_at: new Date().toISOString() },
+                        { onConflict: 'user_id' }
+                    );
+                    if(error) lines.push('❌ Schreibfehler: ' + error.message + ' (Code: ' + error.code + ')');
+                    else lines.push('✅ Schreibtest: OK – Daten gespeichert!');
+                } catch(e) { lines.push('❌ Schreib-Exception: ' + e.message); }
+            } else {
+                lines.push('⚠️ Schreibtest übersprungen – nicht eingeloggt');
+            }
+
+            // 4. State Inhalt
+            lines.push('📊 State: ' + state.races.length + ' Wettkämpfe, ' + state.trackedActivities.length + ' Aktivitäten, ' + state.goals.length + ' Ziele');
+
+            out.innerHTML = lines.map(l => `<div class="py-0.5">${l}</div>`).join('');
+        }
+
+        async function loadState() {
+            if(!currentUser) return;
+            try {
+                const { data, error } = await sb.from('app_state').select('data').eq('user_id', currentUser.id).maybeSingle();
+                if(error) { console.error('loadState DB error:', error); }
+                if(data?.data) {
+                    const parsed = data.data;
+                    const blank = { year: 2026, races: [], goals: [], smartPlans: [], plannedWorkouts: {}, trackedActivities: [], healthCases: [], raceChecklists: {} };
+                    state = { ...blank, ...parsed };
+                    if(!Array.isArray(state.races)) state.races = [];
+                    if(!Array.isArray(state.goals)) state.goals = [];
+                    if(!Array.isArray(state.smartPlans)) state.smartPlans = [];
+                    if(!Array.isArray(state.trackedActivities)) state.trackedActivities = [];
+                    if(!Array.isArray(state.healthCases)) state.healthCases = [];
+                    if(typeof state.plannedWorkouts !== 'object') state.plannedWorkouts = {};
+                    if(typeof state.raceChecklists !== 'object') state.raceChecklists = {};
+                }
+            } catch(e) { console.error('loadState error', e); }
+            try { rebuildPlannedWorkoutsFromSmartPlans(); } catch(e) {}
+        }
+
+        function saveState() {
+            if(!currentUser) return;
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(async () => {
+                try {
+                    const { error } = await sb.from('app_state').upsert(
+                        { user_id: currentUser.id, data: state, updated_at: new Date().toISOString() },
+                        { onConflict: 'user_id' }
+                    );
+                    if(error) {
+                        console.error('saveState error:', error);
+                        showSaveIndicator(false);
+                    } else {
+                        showSaveIndicator(true);
+                    }
+                } catch(e) {
+                    console.error('saveState exception:', e);
+                    showSaveIndicator(false);
+                }
+            }, 800);
+        }
+
+        function rebuildPlannedWorkoutsFromSmartPlans() {
+            state.plannedWorkouts = {};
+            if(!Array.isArray(state.smartPlans)) return;
+
+            state.smartPlans.forEach(plan => {
+                if(!plan || !plan.startDate || !Array.isArray(plan.configs)) return;
+                let currentPlanStartDate = new Date(plan.startDate);
+                if(isNaN(currentPlanStartDate.getTime())) return;
+
+                let endLimitDate = plan.endDate ? new Date(plan.endDate) : (plan.targetRaceDate ? new Date(plan.targetRaceDate) : new Date(state.year, 11, 31));
+                let totalWeeks = Math.ceil((endLimitDate - currentPlanStartDate) / (1000 * 60 * 60 * 24 * 7)) || 12;
+                if(totalWeeks < 1) totalWeeks = 12;
+
+                plan.configs.forEach(cfg => {
+                    if (!cfg || !cfg.sport || !sportConfig[cfg.sport]) return;
+
+                    let currentVol = parseFloat(cfg.baseVol) || 0;
+                    let preRecoveryVol = currentVol;
+                    let incRate = parseFloat(cfg.increaseRate) || 0;
+
+                    for (let w = 1; w <= totalWeeks; w++) {
+                        let finalWeeklyVol = currentVol;
+                        if (w % 4 === 0) finalWeeklyVol = currentVol * 0.60;
+
+                        if (plan.targetRaceDate && totalWeeks >= 2) {
+                            let peakWeekIdx = Math.max(1, totalWeeks - 2);
+                            let peakWeekVol = parseFloat(cfg.baseVol) || 0;
+                            let tmpCurrent = peakWeekVol; let tmpPre = peakWeekVol;
+                            for(let t=1; t<=peakWeekIdx; t++) {
+                                peakWeekVol = tmpCurrent;
+                                if(t % 4 === 0) peakWeekVol = tmpCurrent * 0.60;
+                                if(t % 4 === 0) tmpCurrent = (incRate > 0) ? tmpPre * 1.10 : tmpPre;
+                                else if((t+1)%4===0) { tmpPre = tmpCurrent; tmpCurrent *= (1 + incRate); }
+                                else tmpCurrent *= (1 + incRate);
+                            }
+                            if (w === totalWeeks - 1) finalWeeklyVol = peakWeekVol * 0.70;
+                            else if (w === totalWeeks) finalWeeklyVol = peakWeekVol * 0.40;
+                        }
+
+                        let dayConfigs = cfg.dayConfigs || (cfg.days ? cfg.days.map(d => ({ day: d, percent: 100 / cfg.days.length })) : []);
+                        if(!Array.isArray(dayConfigs)) dayConfigs = [];
+
+                        dayConfigs.forEach(dc => {
+                            if(!dc || typeof dc.day !== 'number') return;
+                            let pct = parseFloat(dc.percent) || 0;
+                            let unroundedVol = finalWeeklyVol * (pct / 100);
+                            let finalVol = (sportConfig[cfg.sport].unit === 'km') ? parseFloat(unroundedVol.toFixed(1)) : Math.ceil(unroundedVol);
+                            let daysOffset = ((w - 1) * 7) + dc.day;
+                            let targetUnitDate = addDays(currentPlanStartDate, daysOffset);
+                            if(targetUnitDate <= endLimitDate) {
+                                let dStr = formatDateISO(targetUnitDate);
+                                if(!state.plannedWorkouts[dStr]) state.plannedWorkouts[dStr] = [];
+                                state.plannedWorkouts[dStr].push({ id: Date.now() + Math.random(), planId: plan.id, sport: cfg.sport, vol: finalVol });
+                            }
+                        });
+
+                        if (w % 4 === 0) currentVol = (incRate > 0) ? preRecoveryVol * 1.10 : preRecoveryVol;
+                        else if ((w + 1) % 4 === 0) { preRecoveryVol = currentVol; currentVol *= (1 + incRate); }
+                        else currentVol *= (1 + incRate);
+                    }
+                });
+            });
+        }
+
+        function deleteSmartPlan(id) {
+            if (confirm("Möchtest du diesen Plan wirklich löschen? Alle generierten Soll-Einheiten werden entfernt.")) {
+                state.smartPlans = state.smartPlans.filter(p => p.id !== id);
+                rebuildPlannedWorkoutsFromSmartPlans();
+                saveState();
+                renderPlanCalendar();
+                renderTrackCalendar();
+            }
+        }
+
+        // --- TIME ENGINE CONVERTERS & HELPERS ---
+        function getMondaysOfYear(year) {
+            let mndys = []; let d = new Date(year, 0, 1);
+            while (d.getDay() !== 1) d.setDate(d.getDate() + 1);
+            while (d.getFullYear() === year) { mndys.push(new Date(d.getTime())); d.setDate(d.getDate() + 7); }
+            return mndys;
+        }
+
+        function formatDateISO(d) {
+            if(!d || isNaN(d.getTime())) return "";
+            let month = '' + (d.getMonth() + 1), day = '' + d.getDate(), year = d.getFullYear();
+            if (month.length < 2) month = '0' + month; if (day.length < 2) day = '0' + day;
+            return [year, month, day].join('-');
+        }
+
+        function addDays(date, days) {
+            let result = new Date(date); result.setDate(result.getDate() + days); return result;
+        }
+
+        function getCalWeekNumber(d) {
+            let target = new Date(d.valueOf()); let dayNr = (d.getDay() + 6) % 7;
+            target.setDate(target.getDate() - dayNr + 3); let firstThursday = target.valueOf();
+            target.setMonth(0, 1); if (target.getDay() !== 4) target.setMonth(0, 1 + ((4 - target.getDay() + 7) % 7));
+            return 1 + Math.ceil((firstThursday - target) / 604800000);
+        }
+
+        function parsePaceToSeconds(paceStr) {
+            if(!paceStr || !paceStr.includes(':')) return 0;
+            const pts = paceStr.split(':'); return (parseInt(pts[0], 10) * 60) + parseInt(pts[1], 10);
+        }
+
+        function formatSecondsToPace(seconds) {
+            if(!seconds || isNaN(seconds) || seconds === Infinity) return "--:--";
+            const mins = Math.floor(seconds / 60); const secs = Math.round(seconds % 60);
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+        function isCyclingSport(sport) { return sport === 'Rennrad' || sport === 'Indoor Rennrad'; }
+        function formatPaceForSport(paceSeconds, sport) {
+            if(!paceSeconds || isNaN(paceSeconds) || paceSeconds === Infinity) return isCyclingSport(sport) ? '--.- km/h' : '--:--';
+            if(isCyclingSport(sport)) {
+                const kmh = 3600 / paceSeconds;
+                return `${kmh.toFixed(1)} km/h`;
+            }
+            return formatSecondsToPace(paceSeconds);
+        }
+
+        function changeYear(offset) {
+            state.year += offset; saveState(); updateGlobalYearDisplay();
+            renderPlanCalendar(); renderTrackCalendar(); renderComparisonView();
+        }
+        function updateGlobalYearDisplay() { document.getElementById('current-year-display').innerText = state.year; }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById('tab-' + tabId).classList.remove('hidden');
+            document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active'));
+            const btn = document.getElementById('btn-' + tabId);
+            if(btn) btn.classList.add('active');
+            updateMobileNav(tabId);
+            if(tabId === 'planer') { renderPlanCalendar(); scrollFocusWeek('plan'); }
+            if(tabId === 'tracker') { renderTrackCalendar(); scrollFocusWeek('track'); }
+            if(tabId === 'vergleich') { renderComparisonView(); scrollFocusWeek('comp'); }
+            if(tabId === 'gesundheit') renderHealthView();
+            if(tabId === 'aktivitaeten') renderGlobalLog();
+            if(tabId === 'jahresrueckblick') renderJahresrueckblick();
+            if(tabId === 'dashboard') renderBelastungsampel();
+            if(tabId === 'strava') {} // FIT import – no render needed
+        }
+
+        function scrollFocusWeek(prefix) {
+            setTimeout(() => {
+                const currentKW = getCalWeekNumber(new Date());
+                const targetRow = document.getElementById(prefix + "-kw-" + currentKW);
+                if(targetRow) {
+                    targetRow.scrollIntoView({ block: 'start', behavior: 'auto' });
+                }
+            }, 50);
+        }
+
+        // --- ACTION HANDLERS ---
+        function removeRace(id) { state.races = state.races.filter(r => r.id !== id); saveState(); initGeneratorUI(); renderDashboard(); renderPlanCalendar(); renderTrackCalendar(); }
+        function openRaceEditModal(id) {
+            const r = state.races.find(r => r.id === id); if(!r) return;
+            document.getElementById('race-edit-id').value = id;
+            document.getElementById('race-edit-name').value = r.name;
+            document.getElementById('race-edit-date').value = r.date;
+            document.getElementById('race-edit-modal').classList.remove('hidden');
+        }
+        function closeRaceEditModal() { document.getElementById('race-edit-modal').classList.add('hidden'); }
+        function saveRaceEdit() {
+            const id = parseInt(document.getElementById('race-edit-id').value);
+            const r = state.races.find(r => r.id === id); if(!r) return;
+            r.name = document.getElementById('race-edit-name').value.trim();
+            r.date = document.getElementById('race-edit-date').value;
+            saveState(); closeRaceEditModal(); renderDashboard(); renderPlanCalendar(); renderTrackCalendar();
+        }
+
+        function removeGoal(id) { state.goals = state.goals.filter(g => g.id !== id); saveState(); renderDashboard(); }
+        function toggleGoalDone(id) {
+            const g = state.goals.find(g => g.id === id); if(!g) return;
+            g.done = !g.done; saveState(); renderDashboard();
+        }
+        function openGoalEditModal(id) {
+            const g = state.goals.find(g => g.id === id); if(!g) return;
+            document.getElementById('goal-edit-id').value = id;
+            document.getElementById('goal-edit-text').value = g.text;
+            document.getElementById('goal-edit-date').value = g.date || '';
+            document.getElementById('goal-edit-modal').classList.remove('hidden');
+        }
+        function closeGoalEditModal() { document.getElementById('goal-edit-modal').classList.add('hidden'); }
+        function saveGoalEdit() {
+            const id = parseInt(document.getElementById('goal-edit-id').value);
+            const g = state.goals.find(g => g.id === id); if(!g) return;
+            g.text = document.getElementById('goal-edit-text').value.trim();
+            g.date = document.getElementById('goal-edit-date').value;
+            saveState(); closeGoalEditModal(); renderDashboard();
+        }
+
+        let goalDragSrcId = null;
+        function goalDragStart(ev, id) { goalDragSrcId = id; ev.dataTransfer.effectAllowed = 'move'; }
+        function goalDragOver(ev) { ev.preventDefault(); ev.currentTarget.classList.add('drag-over'); }
+        function goalDragLeave(ev) { ev.currentTarget.classList.remove('drag-over'); }
+        function goalDrop(ev, targetId) {
+            ev.currentTarget.classList.remove('drag-over');
+            if(goalDragSrcId === null || goalDragSrcId === targetId) return;
+            const srcIdx = state.goals.findIndex(g => g.id === goalDragSrcId);
+            const tgtIdx = state.goals.findIndex(g => g.id === targetId);
+            if(srcIdx === -1 || tgtIdx === -1) return;
+            const [moved] = state.goals.splice(srcIdx, 1);
+            state.goals.splice(tgtIdx, 0, moved);
+            goalDragSrcId = null; saveState(); renderDashboard();
+        }
+        
+        function renderDashboard() {
+            const rList = document.getElementById('race-list'); if(!rList) return; rList.innerHTML = '';
+            const today = new Date(); today.setHours(0,0,0,0);
+            const sortedRaces = [...state.races].sort((a, b) => {
+                const da = new Date(a.date), db = new Date(b.date);
+                const aFuture = da >= today, bFuture = db >= today;
+                if(aFuture && !bFuture) return -1;
+                if(!aFuture && bFuture) return 1;
+                if(aFuture && bFuture) return da - db;
+                return db - da;
+            });
+            sortedRaces.forEach(r => {
+                const diffWeeks = Math.ceil((new Date(r.date) - today) / (1000 * 60 * 60 * 24 * 7));
+                const isPast = new Date(r.date) < today;
+                rList.innerHTML += `
+                    <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-xs ${isPast ? 'opacity-60' : ''}">
+                        <div><strong class="text-slate-900 dark:text-white">🏆 ${r.name}</strong><span class="text-slate-500 dark:text-slate-400 ml-2">${formatDateDe(r.date)}</span></div>
+                        <div class="flex items-center gap-2">
+                            <span class="bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-bold px-2 py-1 rounded">${diffWeeks > 0 ? diffWeeks + ' W. übrig' : 'Beendet'}</span>
+                            <button onclick="openChecklistModal(${r.id})" title="Race-Day Checkliste" class="text-slate-400 hover:text-emerald-500 transition"><i class="fa-solid fa-list-check text-xs"></i></button>
+                            <button onclick="openRaceEditModal(${r.id})" class="text-slate-400 hover:text-blue-500 transition"><i class="fa-solid fa-pen text-xs"></i></button>
+                            <button onclick="removeRace(${r.id})" class="text-slate-400 hover:text-red-600 transition"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>`;
+            });
+            const gList = document.getElementById('goal-list'); if(!gList) return; gList.innerHTML = '';
+            const sortedGoals = [...state.goals].sort((a, b) => {
+                if(a.done && !b.done) return 1;
+                if(!a.done && b.done) return -1;
+                if(!a.date && !b.date) return 0;
+                if(!a.date) return 1;
+                if(!b.date) return -1;
+                return new Date(a.date) - new Date(b.date);
+            });
+            sortedGoals.forEach(g => {
+                const dateLabel = g.date ? `<span class="font-semibold ml-2 ${g.done ? 'text-slate-400 dark:text-slate-500' : 'text-emerald-600 dark:text-emerald-400'}">bis ${g.date.split('-')[1]}/${g.date.split('-')[0]}</span>` : '';
+                const doneStyle = g.done ? 'opacity-60 line-through text-slate-400 dark:text-slate-500' : '';
+                gList.innerHTML += `
+                    <li draggable="true"
+                        ondragstart="goalDragStart(event, ${g.id})"
+                        ondragover="goalDragOver(event)"
+                        ondragleave="goalDragLeave(event)"
+                        ondrop="goalDrop(event, ${g.id})"
+                        class="flex justify-between items-center bg-slate-50 dark:bg-slate-900 border dark:border-slate-800 p-2 rounded-lg mb-1 cursor-grab active:cursor-grabbing select-none transition">
+                        <div class="flex items-center gap-2 flex-1 min-w-0">
+                            <i class="fa-solid fa-grip-vertical text-slate-300 dark:text-slate-600 text-xs flex-shrink-0"></i>
+                            <button onclick="toggleGoalDone(${g.id})" title="${g.done ? 'Als offen markieren' : 'Als erreicht markieren'}" class="flex-shrink-0 text-lg leading-none transition hover:scale-125">
+                                ${g.done ? '🎆' : '<i class="fa-regular fa-circle text-slate-300 dark:text-slate-600 text-sm"></i>'}
+                            </button>
+                            <span class="${doneStyle} truncate"><i class="fa-solid fa-bullseye text-emerald-600 mr-1 ${g.done ? 'opacity-40' : ''}"></i>${g.text}${dateLabel}</span>
+                        </div>
+                        <div class="flex items-center gap-1 flex-shrink-0 ml-2">
+                            <button onclick="openGoalEditModal(${g.id})" class="text-slate-400 hover:text-blue-500 transition px-1"><i class="fa-solid fa-pen text-xs"></i></button>
+                            <button onclick="removeGoal(${g.id})" class="text-slate-400 hover:text-red-600 transition px-1"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </li>`;
+            });
+        }
+
+        function getRaceBadgeForDate(dateStr) {
+            const matches = state.races.filter(r => r.date === dateStr);
+            if(matches.length === 0) return '';
+            return matches.map(r => `<div class="bg-amber-500 text-white font-black text-[9px] p-1 rounded mt-1 shadow-xs truncate animate-pulse">🏆 WETTKAMPF: ${r.name}</div>`).join('');
+        }
+
+        // --- PLAN GENERATOR FORM MANAGEMENT ---
+        function initGeneratorUI() {
+            const container = document.getElementById('generator-sports-container'); if(!container) return;
+            container.innerHTML = '';
+            activePlanningSports.forEach(sport => {
+                container.innerHTML += `
+                    <div class="p-2 bg-white dark:bg-slate-950 rounded-lg border dark:border-slate-800 shadow-xs">
+                        <span class="font-bold text-slate-800 dark:text-white block mb-1 border-b dark:border-slate-800 pb-0.5"><i class="fa-solid ${getSportStyle(sport).icon} mr-1"></i> ${sport}</span>
+                        <div class="space-y-1">
+                            <div>
+                                <label class="block text-[10px] text-slate-500 font-semibold">Einheiten / Woche:</label>
+                                <input type="number" id="gen-count-${sport}" value="0" min="0" max="7" onchange="renderDaySelectors('${sport}')" class="w-full border dark:border-slate-700 rounded p-1 text-xs bg-white dark:bg-slate-900">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-500 font-semibold">Wochenvolumen (${sportConfig[sport].unit}):</label>
+                                <input type="number" id="gen-vol-${sport}" value="0" class="w-full border dark:border-slate-700 rounded p-1 text-xs bg-white dark:bg-slate-900">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-500 font-semibold">Steigerungsrate (% pro Woche):</label>
+                                <input type="number" id="gen-inc-${sport}" value="0" class="w-full border dark:border-slate-700 rounded p-1 text-xs bg-white dark:bg-slate-900">
+                            </div>
+                        </div>
+                        <div id="gen-days-${sport}" class="space-y-1 mt-1.5"></div>
+                    </div>`;
+            });
+
+            const raceDropdown = document.getElementById('generator-end-race');
+            if(raceDropdown) {
+                raceDropdown.innerHTML = '<option value="">-- Wettkampf wählen --</option>';
+                state.races.forEach(r => { 
+                    if(r && r.name && r.date) {
+                        raceDropdown.innerHTML += '<option value="' + r.id + '">' + r.name + ' (' + formatDateDe(r.date) + ')</option>';
+                    }
+                });
+            }
+
+            document.getElementById('generator-start-date').value = state.year + "-01-05";
+            document.getElementById('generator-end-mode').value = "none";
+            toggleEndModeFields(); editingPlanId = null;
+            document.getElementById('submit-plan-btn').innerText = "Plan berechnen & in den Kalender schreiben";
+        }
+
+        function toggleEndModeFields() {
+            const mode = document.getElementById('generator-end-mode').value;
+            document.getElementById('generator-end-date').classList.toggle('hidden', mode !== 'date');
+            document.getElementById('generator-end-race').classList.toggle('hidden', mode !== 'race');
+        }
+
+        function renderDaySelectors(sport, existingConfigs = null) {
+            const count = parseInt(document.getElementById(`gen-count-${sport}`).value) || 0;
+            const container = document.getElementById(`gen-days-${sport}`); if(!container) return; container.innerHTML = '';
+            if(count > 0) container.innerHTML += `<span class="block text-[9px] font-bold text-slate-400 uppercase">Tage & %-Anteil:</span>`;
+            const defaultPercent = Math.floor(100 / count);
+            for(let i = 0; i < count; i++) {
+                let savedDay = existingConfigs ? existingConfigs[i]?.day : i;
+                let savedPercent = existingConfigs ? existingConfigs[i]?.percent : (i === count - 1 ? 100 - (defaultPercent * (count - 1)) : defaultPercent);
+                container.innerHTML += `
+                    <div class="flex gap-1 items-center mt-1">
+                        <select id="gen-day-select-${sport}-${i}" class="border dark:border-slate-700 p-1 rounded text-[10px] bg-slate-50 dark:bg-slate-900 flex-1">
+                            <option value="0" ${savedDay===0?'selected':''}>Mo</option><option value="1" ${savedDay===1?'selected':''}>Di</option>
+                            <option value="2" ${savedDay===2?'selected':''}>Mi</option><option value="3" ${savedDay===3?'selected':''}>Do</option>
+                            <option value="4" ${savedDay===4?'selected':''}>Fr</option><option value="5" ${savedDay===5?'selected':''}>Sa</option>
+                            <option value="6" ${savedDay===6?'selected':''}>So</option>
+                        </select>
+                        <input type="number" id="gen-day-pct-${sport}-${i}" value="${savedPercent}" min="0" max="100" class="w-10 border dark:border-slate-700 text-center p-1 rounded text-[10px] bg-white dark:bg-slate-900">%
+                    </div>`;
+            }
+        }
+
+        function generateAndSaveSmartPlan() {
+            const startDateStr = document.getElementById('generator-start-date').value;
+            if(!startDateStr) return alert("Bitte gültiges Startdatum wählen!");
+
+            const endMode = document.getElementById('generator-end-mode').value;
+            let endDate = null; let targetRaceId = null; let targetRaceDate = null;
+
+            if (endMode === 'date') {
+                endDate = document.getElementById('generator-end-date').value; if(!endDate) return alert("Enddatum fehlt!");
+            } else if (endMode === 'race') {
+                targetRaceId = document.getElementById('generator-end-race').value;
+                const race = state.races.find(r => r.id == targetRaceId);
+                if(race) targetRaceDate = race.date; else return alert("Wettkampf wählen!");
+            }
+
+            let planConfigs = [];
+            activePlanningSports.forEach(sport => {
+                const count = parseInt(document.getElementById(`gen-count-${sport}`).value) || 0;
+                const vol = parseFloat(document.getElementById(`gen-vol-${sport}`).value) || 0;
+                const inc = parseFloat(document.getElementById(`gen-inc-${sport}`).value) || 0;
+                let dayConfigs = [];
+                for(let i=0; i<count; i++) {
+                    dayConfigs.push({
+                        day: parseInt(document.getElementById('gen-day-select-' + sport + '-' + i).value),
+                        percent: parseFloat(document.getElementById('gen-day-pct-' + sport + '-' + i).value) || 0
+                    });
+                }
+                if(count > 0 && vol > 0) planConfigs.push({ sport, count, baseVol: vol, increaseRate: inc / 100, dayConfigs });
+            });
+
+            if(planConfigs.length === 0) return alert("Konfiguration unvollständig!");
+
+            let pId = editingPlanId || Date.now();
+            if(editingPlanId) {
+                let existing = state.smartPlans.find(p => p.id === editingPlanId);
+                if(existing) {
+                    existing.startDate = startDateStr; existing.endDate = endDate;
+                    existing.targetRaceId = targetRaceId; existing.targetRaceDate = targetRaceDate;
+                    existing.configs = planConfigs;
+                }
+                for (let d in state.plannedWorkouts) {
+                    if (state.plannedWorkouts[d]) {
+                        state.plannedWorkouts[d] = state.plannedWorkouts[d].filter(w => w.planId !== pId);
+                    }
+                }
+            } else {
+                state.smartPlans.push({ id: pId, name: `Plan ab ${new Date(startDateStr).toLocaleDateString('de-DE')} (${state.year})`, startDate: startDateStr, endDate, targetRaceId, targetRaceDate, configs: planConfigs });
+            }
+
+            editingPlanId = null;
+            rebuildPlannedWorkoutsFromSmartPlans();
+            saveState(); initGeneratorUI(); renderPlanCalendar(); renderTrackCalendar(); alert("Plan erfolgreich generiert!");
+        }
+
+        function editSmartPlan(id) {
+            editingPlanId = id; const plan = state.smartPlans.find(p => p.id === id); if(!plan) return;
+            document.getElementById('generator-start-date').value = plan.startDate;
+            if (plan.endDate) {
+                document.getElementById('generator-end-mode').value = 'date'; document.getElementById('generator-end-date').value = plan.endDate;
+            } else if (plan.targetRaceId) {
+                document.getElementById('generator-end-mode').value = 'race'; document.getElementById('generator-end-race').value = plan.targetRaceId;
+            } else { document.getElementById('generator-end-mode').value = 'none'; }
+            toggleEndModeFields();
+
+            activePlanningSports.forEach(sport => {
+                document.getElementById(`gen-count-${sport}`).value = 0;
+                document.getElementById(`gen-vol-${sport}`).value = 0;
+                document.getElementById(`gen-inc-${sport}`).value = 0;
+                document.getElementById(`gen-days-${sport}`).innerHTML = '';
+            });
+
+            plan.configs.forEach(cfg => {
+                document.getElementById(`gen-count-${cfg.sport}`).value = cfg.count;
+                document.getElementById(`gen-vol-${cfg.sport}`).value = cfg.baseVol;
+                document.getElementById(`gen-inc-${cfg.sport}`).value = cfg.increaseRate * 100;
+                renderDaySelectors(cfg.sport, cfg.dayConfigs);
+            });
+            document.getElementById('submit-plan-btn').innerText = "Änderungen übernehmen & Kalender neu schreiben";
+            document.getElementById('tab-planer').scrollTop = 0;
+        }
+
+        function clickPlannedItem(dateStr, index) {
+            let item = state.plannedWorkouts[dateStr][index]; if(!item) return;
+            let unit = sportConfig[item.sport] ? sportConfig[item.sport].unit : 'min';
+            let action = prompt("Geplante Einheit bearbeiten (" + item.sport + "):\n\n'L' zum Löschen eingeben\nOder neues Volumen eingeben (aktuell: " + item.vol + " " + unit + "):", item.vol);
+            if (action === null) return;
+            if (action.toLowerCase() === 'l') {
+                state.plannedWorkouts[dateStr].splice(index, 1);
+            } else {
+                let v = parseFloat(action);
+                if (!isNaN(v) && v > 0) {
+                    item.vol = (unit === 'km') ? parseFloat(v.toFixed(1)) : Math.ceil(v);
+                }
+            }
+            saveState(); renderPlanCalendar(); renderTrackCalendar();
+        }
+
+        function addManualPlan(dStr) {
+            const sportInput = prompt("Welche Sportart möchten Sie manuell planen?\nOptionen: Krafttraining, Laufen, Rennrad, Schwimmen");
+            if (!sportInput) return;
+            let sanitized = sportInput.trim().toLowerCase();
+            let matchedSport = null;
+            for (let s of activePlanningSports) {
+                if (s.toLowerCase() === sanitized) { matchedSport = s; break; }
+            }
+            if (!matchedSport) { alert("Ungültige Sportart!"); return; }
+            const unit = sportConfig[matchedSport].unit;
+            const volInput = prompt("Geplanten Umfang für " + matchedSport + " eingeben (" + unit + "):");
+            if (volInput === null) return;
+            const vol = parseFloat(volInput);
+            if (isNaN(vol) || vol <= 0) { alert("Bitte einen gültigen Wert eingeben."); return; }
+
+            if (!state.plannedWorkouts[dStr]) state.plannedWorkouts[dStr] = [];
+            const finalVol = (unit === 'km') ? parseFloat(vol.toFixed(1)) : Math.ceil(vol);
+            state.plannedWorkouts[dStr].push({ id: Date.now() + Math.random(), planId: null, sport: matchedSport, vol: finalVol });
+            saveState(); renderPlanCalendar(); renderTrackCalendar();
+        }
+
+        // --- HEALTH PROTOCOLS ---
+        function getHealthOverlayData(dateStr) {
+            let activeIssues = []; const todayStr = formatDateISO(new Date());
+            if(!Array.isArray(state.healthCases)) return activeIssues;
+            
+            state.healthCases.forEach(c => {
+                if(!c || !Array.isArray(c.timeline) || c.timeline.length === 0) return;
+                const sortedTimeline = [...c.timeline].sort((a,b) => new Date(a.date) - new Date(b.date));
+                if(sortedTimeline.length === 0 || !sortedTimeline[0]) return;
+                
+                const start = sortedTimeline[0].date;
+                let isInside = false;
+                if(dateStr >= start) {
+                    if(c.status === 'active') {
+                        if(dateStr <= todayStr) isInside = true;
+                    } else if(c.status === 'resolved' && c.resolvedDate && dateStr <= c.resolvedDate) {
+                        isInside = true;
+                    }
+                }
+                if(isInside) {
+                    let currentEntry = sortedTimeline[0];
+                    sortedTimeline.forEach(t => { if(t && t.date <= dateStr) currentEntry = t; });
+                    activeIssues.push({ type: c.type || 'Verletzung', title: c.title || 'Fokus', intensity: currentEntry.intensity || 5 });
+                }
+            });
+            return activeIssues;
+        }
+
+        // --- CALENDAR RENDER ENGINE ---
+        function renderPlanCalendar() {
+            const listContainer = document.getElementById('active-plans-list'); if(!listContainer) return; listContainer.innerHTML = '';
+            state.smartPlans.forEach(p => {
+                listContainer.innerHTML += `
+                    <div class="flex justify-between items-center bg-blue-50 border border-blue-200 px-3 py-1 text-xs font-semibold rounded-lg dark:bg-blue-950 dark:border-blue-900">
+                        <span class="text-blue-900 dark:text-blue-200"><i class="fa-solid fa-list-check mr-2"></i>${p.name}</span>
+                        <div class="flex gap-2">
+                            <button onclick="editSmartPlan(${p.id})" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 transition font-bold"><i class="fa-solid fa-pen"></i> Bearbeiten</button>
+                            <button onclick="deleteSmartPlan(${p.id})" class="text-red-500 hover:text-red-700 transition font-bold"><i class="fa-solid fa-trash"></i> Löschen</button>
+                        </div>
+                    </div>`;
+            });
+
+            const calendarScrollBox = document.getElementById('plan-year-container'); if(!calendarScrollBox) return; calendarScrollBox.innerHTML = '';
+            const mondays = getMondaysOfYear(state.year); const todayStr = formatDateISO(new Date());
+
+            mondays.forEach(monday => {
+                const kw = getCalWeekNumber(monday); let weekPlannedSums = {};
+                activePlanningSports.forEach(s => weekPlannedSums[s] = 0);
+
+                let daysHTML = '';
+                for(let i = 0; i < 7; i++) {
+                    const currentDay = addDays(monday, i); const dStr = formatDateISO(currentDay);
+                    const computedEntries = state.plannedWorkouts[dStr] || [];
+                    const healthOverlays = getHealthOverlayData(dStr); const raceBadge = getRaceBadgeForDate(dStr);
+                    const isToday = (dStr === todayStr);
+
+                    let entriesHTML = '';
+                    computedEntries.forEach((e, idx) => {
+                        if(!e || !e.sport) return;
+                        if(weekPlannedSums[e.sport] !== undefined) weekPlannedSums[e.sport] += e.vol;
+                        const style = getSportStyle(e.sport);
+                        entriesHTML += `
+                            <div onclick="clickPlannedItem('${dStr}', ${idx})" class="${style.colorClass} border text-[11px] p-1.5 rounded-lg font-bold mt-1 shadow-xs cursor-pointer hover:opacity-80 transition flex items-center gap-1">
+                                <i class="fa-solid ${style.icon} text-xs"></i> <span>${e.vol}${(sportConfig[e.sport] || {unit:''}).unit}</span>
+                            </div>`;
+                    });
+
+                    let healthHTML = '';
+                    healthOverlays.forEach(h => {
+                        healthHTML += `<div class="text-[9px] font-black p-0.5 rounded text-white ${h.type==='Krankheit'?'bg-amber-500':'bg-red-500'} mt-0.5 leading-tight whitespace-normal break-words" title="${h.title || ''}">${h.type==='Krankheit'?'🤒':'🤕'} ${h.title || ''}</div>`;
+                    });
+
+                    daysHTML += `
+                        <div class="bg-white dark:bg-slate-950 p-2 rounded-lg flex flex-col justify-between min-h-[105px] transition border ${isToday ? 'border-blue-600 ring-4 ring-blue-600/20 bg-blue-50/20 dark:bg-blue-950/20' : 'border-gray-200 dark:border-slate-800'}">
+                            <div>
+                                <div class="flex justify-between items-center leading-none mb-1">
+                                    <span class="text-[10px] font-black text-slate-400 uppercase">${weekdaysDeShort[i]}</span>
+                                    ${isToday ? '<span class="text-[8px] bg-blue-600 text-white px-1 py-0.5 rounded font-black">HEUTE</span>' : ''}
+                                </div>
+                                <span class="text-xs font-bold text-slate-800 dark:text-slate-200">${currentDay.getDate()}.${currentDay.getMonth()+1}.</span>
+                                ${raceBadge} ${healthHTML}
+                            </div>
+                            <div class="space-y-0.5">${entriesHTML}</div>
+                            <button onclick="addManualPlan('${dStr}')" class="text-[9px] text-slate-400 hover:text-blue-600 font-bold block text-left mt-1">+ Einzel-Soll</button>
+                        </div>`;
+                }
+
+                let sidebarTotalsHTML = '';
+                Object.keys(weekPlannedSums).forEach(sport => {
+                    if(weekPlannedSums[sport] > 0) {
+                        const style = getSportStyle(sport);
+                        sidebarTotalsHTML += `
+                            <div class="text-[11px] p-1 rounded border ${style.colorClass} font-semibold flex items-center gap-1 mb-0.5">
+                                <i class="fa-solid ${style.icon} text-[10px]"></i>
+                                <span><span class="font-bold">${sport}:</span> ${weekPlannedSums[sport].toFixed(1).replace('.0','')}${sportConfig[sport]?.unit || ''}</span>
+                            </div>`;
+                    }
+                });
+
+                calendarScrollBox.innerHTML += `
+                    <div id="plan-kw-${kw}" class="grid grid-cols-1 xl:grid-cols-8 gap-3 border-b dark:border-slate-800 pb-4 items-center">
+                        <div class="bg-slate-900 text-white p-3 rounded-xl flex xl:flex-col justify-between text-center shadow-xs">
+                            <span class="text-xs uppercase font-black tracking-widest text-blue-400">KW</span><span class="text-2xl font-black">${kw}</span>
+                        </div>
+                        <div class="xl:col-span-6 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5">${daysHTML}</div>
+                        <div class="bg-white dark:bg-slate-950 border dark:border-slate-800 p-2 rounded-xl shadow-xs self-stretch flex flex-col justify-center space-y-0.5">
+                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Wochen-Soll:</span>
+                            ${sidebarTotalsHTML || '<span class="text-slate-400 dark:text-slate-500 text-xs italic">Kein Soll</span>'}
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function renderTrackCalendar() {
+            const container = document.getElementById('track-year-container'); if(!container) return; container.innerHTML = '';
+            const mondays = getMondaysOfYear(state.year); const todayStr = formatDateISO(new Date());
+            mondays.forEach(monday => {
+                const kw = getCalWeekNumber(monday); let weekTrackedSums = {};
+                Object.keys(sportConfig).forEach(s => { weekTrackedSums[s] = 0; });
+                weekTrackedSums["Rennrad"] = 0;
+
+                let daysHTML = '';
+                for(let i = 0; i < 7; i++) {
+                    const currentDay = addDays(monday, i); const dStr = formatDateISO(currentDay);
+                    const dayActivities = state.trackedActivities.filter(a => a.date === dStr);
+                    const plannedSolls = state.plannedWorkouts[dStr] || [];
+                    const healthOverlays = getHealthOverlayData(dStr); const raceBadge = getRaceBadgeForDate(dStr);
+                    const isToday = (dStr === todayStr);
+
+                    let entriesHTML = '';
+                    dayActivities.forEach(a => {
+                        if(a.sport === 'Rennrad' || a.sport === 'Indoor Rennrad') weekTrackedSums["Rennrad"] += a.vol;
+                        else { if(weekTrackedSums[a.sport] !== undefined) weekTrackedSums[a.sport] += a.vol; }
+                        
+                        let labelMetrics = [];
+                        if(a.hr) labelMetrics.push(`❤️${a.hr}`);
+                        if(a.watt && a.sport === 'Indoor Rennrad') labelMetrics.push(`⚡${a.watt}W`);
+                        if(a.pace) labelMetrics.push(`⏱️${formatPaceForSport(a.pace, a.sport)}`);
+                        if(a.hm) labelMetrics.push(`🏔️${a.hm}m`);
+
+                        const style = getSportStyle(a.sport);
+                        entriesHTML += `
+                            <div onclick="openTrackingModal('${dStr}','${a.sport}',${a.id})" class="text-white text-[10px] p-1.5 rounded-lg font-bold mt-1 shadow-xs cursor-pointer hover:opacity-90 transition bg-emerald-600">
+                                <div class="truncate"><i class="fa-solid ${style.icon} mr-0.5 text-[9px]"></i> <strong>${a.vol}${sportConfig[a.sport]?.unit || ''}</strong></div>
+                                ${labelMetrics.length ? `<div class="text-[7.5px] opacity-90 truncate mt-0.5 font-medium">${labelMetrics.join(' ')}</div>` : ''}
+                            </div>`;
+                    });
+
+                    plannedSolls.forEach(p => {
+                        if(!p || !p.sport) return;
+                        const style = getSportStyle(p.sport);
+                        entriesHTML += `
+                            <div class="text-[9px] text-slate-400 border border-dashed border-slate-300 dark:border-slate-700 p-1 rounded-md mt-1 flex items-center gap-1 bg-slate-50/50 dark:bg-slate-900/50 opacity-80">
+                                <i class="fa-solid ${style.icon} text-[8px] text-slate-400"></i>
+                                <span class="font-medium">Soll: ${p.vol}${sportConfig[p.sport]?.unit || ''}</span>
+                            </div>`;
+                    });
+
+                    let healthHTML = '';
+                    healthOverlays.forEach(h => {
+                        healthHTML += `<div class="text-[9px] font-black p-0.5 rounded text-white ${h.type==='Krankheit'?'bg-amber-500':'bg-red-500'} mt-0.5 leading-tight whitespace-normal break-words" title="${h.title || ''}">${h.type==='Krankheit'?'🤒':'🤕'} ${h.title || ''}</div>`;
+                    });
+
+                    daysHTML += `
+                        <div ondragover="allowCalendarDrop(event)" ondragleave="leaveCalendarDrop(event)" ondrop="handleCalendarDrop(event, '${dStr}')" class="bg-white dark:bg-slate-950 p-2 rounded-lg flex flex-col justify-between min-h-[105px] relative transition border ${isToday ? 'border-blue-600 ring-4 ring-blue-600/20 bg-blue-50/20 dark:bg-blue-950/20' : 'border-gray-200 dark:border-slate-800'}">
+                            <div>
+                                <div class="flex justify-between items-center leading-none mb-1">
+                                    <span class="text-[10px] font-black text-slate-400 uppercase">${weekdaysDeShort[i]}</span>
+                                    ${isToday ? '<span class="text-[8px] bg-blue-600 text-white px-1 py-0.5 rounded font-black">HEUTE</span>' : ''}
+                                </div>
+                                <span class="text-xs font-bold text-slate-800 dark:text-slate-200">${currentDay.getDate()}.${currentDay.getMonth()+1}.</span>
+                                ${raceBadge} ${healthHTML}
+                            </div>
+                            <div class="space-y-0.5">${entriesHTML}</div>
+                        </div>`;
+                }
+
+                let sidebarTotalsHTML = '';
+                let displaySumKeys = ["Krafttraining", "Laufen", "Indoor Laufen (Laufband)", "Rennrad", "Schwimmen", "Stretching/Yoga", "Meditation"];
+                displaySumKeys.forEach(sport => {
+                    if(weekTrackedSums[sport] > 0) {
+                        const style = getSportStyle(sport === "Indoor Laufen (Laufband)" ? "Laufen" : sport);
+                        sidebarTotalsHTML += `
+                            <div class="text-[11px] p-1 border rounded font-semibold mb-0.5 ${style.colorClass}">
+                                <span class="font-bold">${sport}:</span> ${weekTrackedSums[sport].toFixed(1).replace('.0','')}${sportConfig[sport]?.unit || 'min'}
+                            </div>`;
+                    }
+                });
+
+                container.innerHTML += `
+                    <div id="track-kw-${kw}" class="grid grid-cols-1 xl:grid-cols-8 gap-3 border-b dark:border-slate-800 pb-4 items-center">
+                        <div class="bg-slate-900 text-white p-3 rounded-xl flex xl:flex-col justify-between text-center shadow-xs">
+                            <span class="text-xs uppercase font-black tracking-widest text-emerald-400">KW</span><span class="text-2xl font-black">${kw}</span>
+                        </div>
+                        <div class="xl:col-span-6 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5">${daysHTML}</div>
+                        <div class="bg-white dark:bg-slate-950 border dark:border-slate-800 p-2 rounded-xl shadow-xs self-stretch flex flex-col justify-center space-y-0.5">
+                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Wochen-Ist:</span>
+                            ${sidebarTotalsHTML || '<span class="text-slate-400 dark:text-slate-500 text-xs italic">Kein Ist</span>'}
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function renderBadges() {
+            const container = document.getElementById('drag-badges-container'); if(!container) return; container.innerHTML = '';
+            Object.keys(sportConfig).forEach(sport => {
+                const style = getSportStyle(sport);
+                container.innerHTML += `
+                    <div draggable="true" ondragstart="handleDragStart(event)" data-sport="${sport}" class="cursor-grab border px-3 py-1.5 rounded-full text-xs font-bold shadow-xs flex items-center gap-2 transition ${style.colorClass}">
+                        <i class="fa-solid ${style.icon}"></i> ${sport}
+                    </div>`;
+            });
+        }
+        function handleDragStart(ev) { ev.dataTransfer.setData("sport_type", ev.target.getAttribute('data-sport')); }
+        function allowCalendarDrop(ev) { ev.preventDefault(); ev.currentTarget.classList.add('drag-over'); }
+        function leaveCalendarDrop(ev) { ev.currentTarget.classList.remove('drag-over'); }
+        function handleCalendarDrop(ev, dateStr) {
+            ev.preventDefault(); ev.currentTarget.classList.remove('drag-over');
+            const sport = ev.dataTransfer.getData("sport_type"); openTrackingModal(dateStr, sport);
+        }
+
+        function autoCalculatePace() {
+            const sport = document.getElementById('modal-sport').value; if (!sport) return;
+            let mainVol = parseFloat(document.getElementById('modal-vol').value) || 0;
+            let km = 0; let min = 0;
+
+            if (sportConfig[sport]?.unit === 'km') {
+                km = mainVol; min = parseFloat(document.getElementById('modal-duration').value) || 0;
+            } else if (sportConfig[sport]?.unit === 'min') {
+                min = mainVol; km = parseFloat(document.getElementById('modal-km').value) || 0;
+            }
+
+            const paceLabel = document.getElementById('modal-field-pace').querySelector('label');
+            if(isCyclingSport(sport)) {
+                if(paceLabel) paceLabel.textContent = 'Geschwindigkeit:';
+                document.getElementById('modal-pace').placeholder = '-- km/h';
+            } else {
+                if(paceLabel) paceLabel.textContent = 'Pace (MM:SS):';
+                document.getElementById('modal-pace').placeholder = '--:--';
+            }
+
+            if (km > 0 && min > 0) {
+                let secTotal = (min * 60) / km;
+                document.getElementById('modal-pace').value = formatPaceForSport(secTotal, sport);
+            } else {
+                document.getElementById('modal-pace').value = '';
+            }
+        }
+
+        function openTrackingModal(dateStr, sport, editId = null) {
+            document.getElementById('tracking-modal').classList.remove('hidden');
+            document.getElementById('modal-date').value = dateStr; document.getElementById('modal-sport').value = sport;
+            document.getElementById('modal-id').value = editId || '';
+            document.getElementById('modal-title').innerText = editId ? 'Einheit bearbeiten' : `${sport} erfassen`;
+            document.getElementById('modal-vol-label').innerText = `Hauptvolumen (${(sportConfig[sport] || {unit:''}).unit}):`;
+
+            const isKmBased = (sportConfig[sport]?.unit === 'km');
+            const isMinBased = (sportConfig[sport]?.unit === 'min');
+
+            document.getElementById('modal-field-km-container').classList.toggle('hidden', isKmBased);
+            document.getElementById('modal-field-duration-container').classList.toggle('hidden', isMinBased);
+            
+            const allowsElevation = (sport.includes('Laufen') || sport.includes('Rennrad'));
+            document.getElementById('modal-field-hm-container').classList.toggle('hidden', !allowsElevation);
+            document.getElementById('modal-field-watt').classList.toggle('hidden', sport !== 'Indoor Rennrad');
+
+            if(editId) {
+                const act = state.trackedActivities.find(a => a.id == editId);
+                if(act) {
+                    document.getElementById('modal-vol').value = act.vol;
+                    if(!isKmBased) document.getElementById('modal-km').value = act.km || '';
+                    if(!isMinBased) document.getElementById('modal-duration').value = act.duration || '';
+                    document.getElementById('modal-hr').value = act.hr || '';
+                    document.getElementById('modal-watt').value = act.watt || '';
+                    document.getElementById('modal-hm').value = act.hm || '';
+                    document.getElementById('modal-comment').value = act.comment || '';
+                }
+            } else {
+                document.getElementById('modal-vol').value = ''; document.getElementById('modal-km').value = '';
+                document.getElementById('modal-duration').value = ''; document.getElementById('modal-hr').value = '140';
+                document.getElementById('modal-watt').value = ''; document.getElementById('modal-hm').value = '';
+                document.getElementById('modal-comment').value = '';
+            }
+            autoCalculatePace();
+        }
+        function closeTrackingModal() { document.getElementById('tracking-modal').classList.add('hidden'); }
+
+        function saveTrackedItem() {
+            const id = document.getElementById('modal-id').value; const date = document.getElementById('modal-date').value;
+            const sport = document.getElementById('modal-sport').value; const vol = parseFloat(document.getElementById('modal-vol').value) || 0;
+            
+            let km = (sportConfig[sport]?.unit === 'km') ? vol : (parseFloat(document.getElementById('modal-km').value) || null);
+            let duration = (sportConfig[sport]?.unit === 'min') ? vol : (parseInt(document.getElementById('modal-duration').value) || null);
+            
+            const hr = parseInt(document.getElementById('modal-hr').value) || null;
+            const watt = (sport === 'Indoor Rennrad') ? (parseInt(document.getElementById('modal-watt').value) || null) : null;
+            const MathHm = (sport.includes('Laufen') || sport.includes('Rennrad')) ? (parseInt(document.getElementById('modal-hm').value) || null) : null;
+            const comment = document.getElementById('modal-comment').value;
+
+            if(vol <= 0) return alert("Umfang fehlt!");
+            let paceSeconds = (km > 0 && duration > 0) ? ((duration * 60) / km) : null;
+
+            if(id) {
+                let act = state.trackedActivities.find(a => a.id == id);
+                if(act) Object.assign(act, { vol, km, duration, hr, watt, hm: MathHm, pace: paceSeconds, comment });
+            } else {
+                state.trackedActivities.push({ id: Date.now(), date, sport, vol, km, duration, hr, watt, hm: MathHm, pace: paceSeconds, comment });
+            }
+            saveState(); closeTrackingModal(); renderTrackCalendar();
+        }
+
+        // --- PLAN VS IST VERGLEICH ---
+        function renderComparisonView() {
+            const container = document.getElementById('comparison-year-container'); if(!container) return; container.innerHTML = '';
+            const mondays = getMondaysOfYear(state.year);
+            
+            mondays.forEach(monday => {
+                const kw = getCalWeekNumber(monday);
+                let sumsPlanned = { "Krafttraining":0, "Laufen":0, "Rennrad":0, "Schwimmen":0 };
+                let sumsTracked = { "Krafttraining":0, "Laufen":0, "Rennrad":0, "Schwimmen":0 };
+                let hasLogsInWeekForSport = { "Krafttraining":false, "Laufen":false, "Rennrad":false, "Schwimmen":false };
+
+                for(let i=0; i<7; i++) {
+                    const dStr = formatDateISO(addDays(monday, i));
+                    (state.plannedWorkouts[dStr] || []).forEach(e => { if(e && sumsPlanned[e.sport]!==undefined) sumsPlanned[e.sport] += e.vol; });
+                    state.trackedActivities.filter(a => a.date === dStr).forEach(a => { 
+                        let targetKey = null;
+                        if(a.sport === 'Rennrad' || a.sport === 'Indoor Rennrad') targetKey = "Rennrad";
+                        else if(a.sport === 'Laufen' || a.sport === 'Indoor Laufen (Laufband)') targetKey = "Laufen";
+                        else if(sumsTracked[a.sport] !== undefined) targetKey = a.sport;
+                        
+                        if(targetKey) { sumsTracked[targetKey] += a.vol; hasLogsInWeekForSport[targetKey] = true; }
+                    });
+                }
+
+                let comparisonRowsHTML = '';
+                ["Krafttraining", "Laufen", "Rennrad", "Schwimmen"].forEach(sport => {
+                    const plan = sumsPlanned[sport] || 0; const loggedAny = hasLogsInWeekForSport[sport];
+                    const ist = sumsTracked[sport] || 0; const unit = (sportConfig[sport] || {unit:''}).unit;
+
+                    if(plan > 0 || loggedAny) {
+                        let istText = ""; let statusHTML = ""; let diffText = ""; let diffColor = "text-slate-400";
+
+                        if (!loggedAny) {
+                            istText = ""; diffText = ""; statusHTML = ""; 
+                        } else {
+                            istText = `${ist.toFixed(1).replace('.0','')} ${unit}`;
+                            const diffValue = ist - plan;
+                            if(diffValue > 0) { diffText = `+${diffValue.toFixed(1).replace('.0','')} ${unit}`; diffColor = "text-emerald-600 font-bold"; } 
+                            else if(diffValue < 0) { diffText = `${diffValue.toFixed(1).replace('.0','')} ${unit}`; diffColor = "text-red-600 font-bold"; } 
+                            else { diffText = `±0 ${unit}`; diffColor = "text-slate-400 font-semibold"; }
+
+                            if (plan > 0) {
+                                if (ist > plan * 1.15) statusHTML = `<span class="bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded text-[10px] dark:bg-red-950 dark:text-red-300">Overload</span>`;
+                                else if (ist >= plan * 0.85 && ist <= plan * 1.15) statusHTML = `<span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px] dark:bg-emerald-950 dark:text-emerald-300">Optimal</span>`;
+                                else statusHTML = `<span class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded text-[10px] dark:bg-amber-950 dark:text-amber-300">Defizit</span>`;
+                            } else { statusHTML = `<span class="text-slate-400 text-[10px]">Zusatz</span>`; }
+                        }
+
+                        comparisonRowsHTML += `
+                            <div class="grid grid-cols-5 gap-2 text-slate-700 dark:text-slate-300 font-medium py-1 border-b dark:border-slate-800 last:border-0 items-center">
+                                <div class="truncate font-bold">${sport}</div>
+                                <div>Soll: <span class="text-slate-900 dark:text-white font-bold">${plan > 0 ? plan.toFixed(1).replace('.0','') + ' ' + unit : '-'}</span></div>
+                                <div class="truncate">Ist: <span class="text-slate-900 dark:text-white font-black">${istText}</span></div>
+                                <div class="truncate">Diff: <span class="${diffColor}">${diffText}</span></div>
+                                <div class="text-right">${statusHTML}</div>
+                            </div>`;
+                    }
+                });
+
+                container.innerHTML += `
+                    <div id="comp-kw-${kw}" class="flex gap-4 border-b dark:border-slate-800 pb-3 last:border-0 items-center">
+                        <div class="bg-slate-900 text-white p-3 rounded-xl text-center shadow-xs w-16 flex-shrink-0">
+                            <span class="text-[9px] uppercase font-black block tracking-wider text-slate-400">KW</span><span class="text-xl font-black">${kw}</span>
+                        </div>
+                        <div class="flex-1 bg-white dark:bg-slate-950 border dark:border-slate-800 p-3 rounded-xl text-xs space-y-1 shadow-xs">
+                            ${comparisonRowsHTML || '<span class="text-slate-400 dark:text-slate-500 italic">Keine Trainingsdaten oder Sollvorgaben für diese Woche hinterlegt.</span>'}
+                        </div>
+                    </div>`;
+            });
+        }
+
+        // --- STRENGTH LOG PARSER ---
+
+        // --- ADVANCED HEALTH & MEDICINE HIERARCHY ---
+        function initAnatomyDropdowns() {
+            const l1 = document.getElementById('inj-l1'); if(!l1) return; l1.innerHTML = '';
+            Object.keys(anatomyDatabase).forEach(k => { l1.innerHTML += `<option value="${k}">${k}</option>`; });
+            updateAnatomyL2();
+        }
+        function updateAnatomyL2() {
+            const val1 = document.getElementById('inj-l1').value;
+            const l2 = document.getElementById('inj-l2'); if(!l2) return; l2.innerHTML = '';
+            if(anatomyDatabase[val1]) { Object.keys(anatomyDatabase[val1]).forEach(k => { l2.innerHTML += `<option value="${k}">${k}</option>`; }); }
+            updateAnatomyL3();
+        }
+        function updateAnatomyL3() {
+            const val1 = document.getElementById('inj-l1').value; const val2 = document.getElementById('inj-l2').value;
+            const l3 = document.getElementById('inj-l3'); if(!l3) return; l3.innerHTML = '';
+            if(anatomyDatabase[val1] && anatomyDatabase[val1][val2]) { Object.keys(anatomyDatabase[val1][val2]).forEach(k => { l3.innerHTML += `<option value="${k}">${k}</option>`; }); }
+            updateAnatomyL4();
+        }
+        function updateAnatomyL4() {
+            const val1 = document.getElementById('inj-l1').value; const val2 = document.getElementById('inj-l2').value; const val3 = document.getElementById('inj-l3').value;
+            const l4 = document.getElementById('inj-l4'); if(!l4) return; l4.innerHTML = '';
+            if(anatomyDatabase[val1] && anatomyDatabase[val1][val2] && anatomyDatabase[val1][val2][val3]) {
+                anatomyDatabase[val1][val2][val3].forEach(item => { l4.innerHTML += `<option value="${item}">${item}</option>`; });
+            }
+        }
+        function handleHealthTypeChange() {
+            const type = document.getElementById('health-main-type').value;
+            if(type === 'Krankheit') {
+                document.getElementById('cascading-injury-box').classList.add('hidden');
+                document.getElementById('illness-name-box').classList.remove('hidden');
+            } else {
+                document.getElementById('cascading-injury-box').classList.remove('hidden');
+                document.getElementById('illness-name-box').classList.add('hidden');
+            }
+        }
+
+        function registerHealthIssue() {
+            const type = document.getElementById('health-main-type').value; const start = document.getElementById('health-start-date').value;
+            const intensity = parseInt(document.getElementById('health-init-intensity').value) || 5;
+            const comment = document.getElementById('health-init-comment').value;
+            if(!start) return alert("Startdatum fehlt.");
+            let title = type === 'Verletzung' ? `${document.getElementById('inj-l2').value} -> ${document.getElementById('inj-l4').value}` : (document.getElementById('illness-title').value || "Allgemeiner Infekt");
+            
+            state.healthCases.push({ id: Date.now(), type, title, status: 'active', resolvedDate: null, timeline: [{ date: start, intensity, comment }] });
+            saveState(); renderHealthView();
+        }
+
+        // --- HEALTH VIEW ---
+        function renderHealthView() {
+            const activeList = document.getElementById('active-health-list'); if(!activeList) return;
+            const resolvedList = document.getElementById('resolved-health-list'); activeList.innerHTML = ''; resolvedList.innerHTML = '';
+            
+            const sortedCases = [...state.healthCases].sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
+            sortedCases.forEach(c => {
+                if(!c || !Array.isArray(c.timeline)) return;
+                const latestEntry = [...c.timeline].sort((a,b)=>new Date(b.date)-new Date(a.date))[0] || {intensity:0, comment:''};
+                let actionButtonsHTML = `<button onclick="openHealthTrackingModal(${c.id})" class="bg-slate-900 text-white px-2.5 py-1.5 rounded font-bold hover:bg-slate-800 transition"><i class="fa-solid fa-folder-open mr-1"></i> Akte</button>`;
+                if(c.status === 'resolved') {
+                    actionButtonsHTML = `<button onclick="reopenHealthCase(${c.id})" class="bg-blue-600 text-white px-2.5 py-1.5 rounded font-bold hover:bg-blue-700 transition"><i class="fa-solid fa-rotate-left mr-1"></i> Wieder eröffnen</button> ` + actionButtonsHTML;
+                }
+
+                const html = `
+                    <div class="p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs flex justify-between items-center text-xs">
+                        <div>
+                            <span class="font-black uppercase text-[9px] px-1.5 py-0.5 rounded text-white ${c.type==='Krankheit'?'bg-amber-500':'bg-red-500'} mr-2">${c.type}</span>
+                            <strong class="text-slate-900 dark:text-white">${c.title}</strong>
+                            <div class="text-slate-500 dark:text-slate-400 mt-1">Aktuelle Last: <span class="font-bold text-slate-800 dark:text-slate-200">${latestEntry.intensity}/10</span> &bull; Status: "${latestEntry.comment}"</div>
+                        </div>
+                        <div class="flex gap-1 items-center">
+                            ${actionButtonsHTML}
+                            <button onclick="deleteHealthCase(${c.id})" class="text-slate-300 hover:text-red-500 px-1 transition"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>`;
+                if(c.status === 'active') activeList.innerHTML += html; else resolvedList.innerHTML += html;
+            });
+        }
+        function deleteHealthCase(id) { state.healthCases = state.healthCases.filter(c => c.id !== id); saveState(); renderHealthView(); }
+        function reopenHealthCase(id) {
+            const c = state.healthCases.find(h => h.id == id);
+            if(c) { c.status = 'active'; c.resolvedDate = null; saveState(); renderHealthView(); }
+        }
+
+        function openHealthTrackingModal(caseId) {
+            const c = state.healthCases.find(h => h.id == caseId); if(!c) return;
+            document.getElementById('health-progress-modal').classList.remove('hidden');
+            document.getElementById('health-modal-case-id').value = caseId;
+            document.getElementById('health-modal-title').innerText = c.title;
+            document.getElementById('health-resolve-btn').classList.toggle('hidden', c.status === 'resolved');
+            resetHealthEntryForm(); renderHealthTimelineLogsList(c); renderHealthChart(c);
+        }
+
+        function renderHealthTimelineLogsList(c) {
+            const listContainer = document.getElementById('health-timeline-logs-list'); if(!listContainer) return; listContainer.innerHTML = '';
+            const sortedTimeline = [...c.timeline].sort((a, b) => new Date(b.date) - new Date(a.date));
+            sortedTimeline.forEach((t, index) => {
+                listContainer.innerHTML += `
+                    <div class="bg-slate-50 border dark:border-slate-800 dark:bg-slate-950 p-2 rounded flex justify-between items-center text-[11px]">
+                        <div>
+                            <span class="font-bold text-slate-700 dark:text-slate-300">${new Date(t.date).toLocaleDateString('de-DE')}</span> - 
+                            <span>Intensität: <span class="font-bold text-red-600">${t.intensity}/10</span></span>
+                            <p class="text-slate-500 dark:text-slate-400 italic truncate max-w-[220px]">"${t.comment || ''}"</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="loadHealthEntryForEdit(${index})" class="text-blue-600 hover:underline font-bold">Edit</button>
+                            <button onclick="deleteHealthEntry(${index})" class="text-red-500 hover:underline font-bold">Löschen</button>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function loadHealthEntryForEdit(index) {
+            const caseId = document.getElementById('health-modal-case-id').value;
+            const c = state.healthCases.find(h => h.id == caseId); const entry = c.timeline[index];
+            document.getElementById('health-modal-edit-index').value = index;
+            document.getElementById('health-progress-date').value = entry.date;
+            document.getElementById('health-progress-intensity').value = entry.intensity;
+            document.getElementById('health-progress-comment').value = entry.comment;
+            document.getElementById('health-entry-form-title').innerText = "Status-Eintrag editieren";
+            document.getElementById('health-cancel-edit-btn').classList.remove('hidden');
+        }
+
+        function resetHealthEntryForm() {
+            document.getElementById('health-modal-edit-index').value = "";
+            document.getElementById('health-progress-date').value = formatDateISO(new Date());
+            document.getElementById('health-progress-intensity').value = "5";
+            document.getElementById('health-progress-comment').value = "";
+            document.getElementById('health-entry-form-title').innerText = "Neuen Status-Eintrag hinzufügen";
+            document.getElementById('health-cancel-edit-btn').classList.add('hidden');
+        }
+
+        function deleteHealthEntry(index) {
+            const caseId = document.getElementById('health-modal-case-id').value;
+            const c = state.healthCases.find(h => h.id == caseId);
+            if(c.timeline.length <= 1) return alert("Mindestens ein Protokolleintrag muss bestehen bleiben!");
+            c.timeline.splice(index, 1); saveState(); openHealthTrackingModal(caseId);
+        }
+
+        // --- HEALTH CHART ENGINE ---
+        function saveHealthProgress() {
+            const id = document.getElementById('health-modal-case-id').value;
+            const editIndexStr = document.getElementById('health-modal-edit-index').value;
+            const date = document.getElementById('health-progress-date').value;
+            const intensity = parseInt(document.getElementById('health-progress-intensity').value) || 5;
+            const comment = document.getElementById('health-progress-comment').value;
+
+            if(!date) return alert("Datum eingeben!");
+            const c = state.healthCases.find(h => h.id == id);
+            if(editIndexStr !== "") { c.timeline[parseInt(editIndexStr)] = { date, intensity, comment }; } 
+            else { c.timeline.push({ date, intensity, comment }); }
+            saveState(); openHealthTrackingModal(id); renderHealthView();
+        }
+
+        function renderHealthChart(c) {
+            if(healthChartInstance) healthChartInstance.destroy();
+            const sortedLine = [...c.timeline].sort((a,b) => new Date(a.date) - new Date(b.date));
+            healthChartInstance = new Chart(document.getElementById('health-modal-chart'), {
+                type: 'line',
+                data: {
+                    labels: sortedLine.map(t => t.date),
+                    datasets: [{ label: 'Verlauf (1-10)', data: sortedLine.map(t => t.intensity), borderColor: c.type==='Krankheit'?'#f59e0b':'#ef4444', backgroundColor: 'rgba(0,0,0,0.01)', fill: true }]
+                },
+                options: { scales: { y: { min: 1, max: 10 } } }
+            });
+        }
+
+        function resolveHealthIssue() {
+            const id = document.getElementById('health-modal-case-id').value; const c = state.healthCases.find(h => h.id == id);
+            c.status = 'resolved'; c.resolvedDate = formatDateISO(new Date()); saveState(); closeHealthModal(); renderHealthView();
+        }
+        function closeHealthModal() { document.getElementById('health-progress-modal').classList.add('hidden'); }
+
+        // --- GLOBAL ACTIVITY LOG ---
+        function renderGlobalLog() {
+            const tbody = document.getElementById('global-log-table-body'); if(!tbody) return; tbody.innerHTML = '';
+            const sorted = [...state.trackedActivities].sort((a,b)=> new Date(b.date) - new Date(a.date));
+            sorted.forEach(a => {
+                let metrics = [];
+                if(a.hr) metrics.push(`HF: ${a.hr} bpm`);
+                if(a.watt && a.sport === 'Indoor Rennrad') metrics.push(`Power: ${a.watt}W`);
+                if(a.pace) metrics.push(isCyclingSport(a.sport) ? `Tempo: ${formatPaceForSport(a.pace, a.sport)}` : `Pace: ${formatSecondsToPace(a.pace)}`);
+                if(a.hm) metrics.push(`Gain: +${a.hm}hm`);
+                
+                tbody.innerHTML += `
+                    <tr class="border-b dark:border-slate-800 text-xs hover:bg-slate-50 dark:hover:bg-slate-900 transition">
+                        <td class="p-3 font-bold">${new Date(a.date).toLocaleDateString('de-DE')}</td>
+                        <td class="p-3 font-semibold text-slate-700 dark:text-slate-300"><i class="fa-solid ${getSportStyle(a.sport).icon} mr-1 text-slate-400"></i> ${a.sport}</td>
+                        <td class="p-3 font-bold text-slate-900 dark:text-white">${a.vol} ${(sportConfig[a.sport]||{}).unit || ''}</td>
+                        <td class="p-3 text-slate-600 dark:text-slate-400 font-medium">${metrics.join(' | ') || '-'}</td>
+                        <td class="p-3 italic text-slate-500 dark:text-slate-400">${a.comment || ''}</td>
+                        <td class="p-3 flex gap-2">
+                            <button onclick="openTrackingModal('${a.date}','${a.sport}',${a.id})" class="text-blue-600 hover:text-blue-800 font-bold"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteGlobalActivity(${a.id})" class="text-red-500 hover:text-red-700 font-bold"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+            });
+        }
+        function deleteAllActivities() {
+            const count = state.trackedActivities.length;
+            if(count === 0) { alert('Keine Aktivitäten vorhanden.'); return; }
+            if(!confirm(`Wirklich alle ${count} Aktivitäten unwiderruflich löschen?`)) return;
+            state.trackedActivities = [];
+            saveState(); renderGlobalLog(); renderBelastungsampel();
+        }
+
+        function deleteGlobalActivity(id) { state.trackedActivities = state.trackedActivities.filter(a => a.id !== id); saveState(); renderGlobalLog(); }
+
+        
+
+        // --- BELASTUNGSAMPEL ---
+        function renderBelastungsampel() {
+            const el = document.getElementById('belastungsampel-content'); if(!el) return;
+            const today = new Date(); today.setHours(0,0,0,0);
+            const getMondayOf = d => { const m = new Date(d); m.setDate(d.getDate() - ((d.getDay()+6)%7)); m.setHours(0,0,0,0); return m; };
+            const getWeekKm = (mondayDate) => {
+                let km = 0;
+                for(let i=0; i<7; i++) {
+                    const dStr = formatDateISO(addDays(mondayDate, i));
+                    state.trackedActivities.filter(a => a.date === dStr && (a.sport==='Laufen'||a.sport.includes('Laufband'))).forEach(a => km += (a.km || a.vol || 0));
+                }
+                return km;
+            };
+            const thisMonday = getMondayOf(today);
+            const lastMonday = getMondayOf(addDays(thisMonday, -7));
+            const prevMonday = getMondayOf(addDays(lastMonday, -7));
+
+            const kwThis = getWeekKm(thisMonday);
+            const kwLast = getWeekKm(lastMonday);
+            const kwPrev = getWeekKm(prevMonday);
+            const avg4 = (kwLast + kwPrev + getWeekKm(addDays(prevMonday,-7)) + getWeekKm(addDays(prevMonday,-14))) / 4;
+
+            let ampelColor, ampelIcon, ampelText, ampelBg, changeText = '';
+            const pct = avg4 > 0 ? ((kwThis - avg4) / avg4 * 100) : 0;
+
+            if(kwThis === 0 && avg4 === 0) {
+                ampelColor = 'text-slate-400'; ampelBg = 'bg-slate-100 dark:bg-slate-900'; ampelIcon = '⚪'; ampelText = 'Noch keine Laufdaten für dieses Jahr.';
+            } else if(pct <= 5) {
+                ampelColor = 'text-emerald-700 dark:text-emerald-300'; ampelBg = 'bg-emerald-50 dark:bg-emerald-950'; ampelIcon = '🟢'; ampelText = 'Optimale Belastung – weiter so!';
+            } else if(pct <= 15) {
+                ampelColor = 'text-yellow-700 dark:text-yellow-300'; ampelBg = 'bg-yellow-50 dark:bg-yellow-950'; ampelIcon = '🟡'; ampelText = 'Leicht erhöht – aufmerksam bleiben.';
+            } else {
+                ampelColor = 'text-red-700 dark:text-red-300'; ampelBg = 'bg-red-50 dark:bg-red-950'; ampelIcon = '🔴'; ampelText = `Volumen +${Math.round(pct)}% über Schnitt – Verletzungsrisiko!`;
+            }
+
+            if(kwLast > 0) changeText = `Vorwoche: ${kwLast.toFixed(1)} km | `;
+
+            el.innerHTML = `<div class="${ampelBg} rounded-lg p-3 flex items-center gap-4">
+                <span class="text-3xl">${ampelIcon}</span>
+                <div class="flex-1">
+                    <div class="font-black text-sm ${ampelColor}">${ampelText}</div>
+                    <div class="text-slate-500 dark:text-slate-400 mt-0.5">${changeText}Diese Woche: <strong>${kwThis.toFixed(1)} km Laufen</strong> | 4-Wochen-Schnitt: ${avg4.toFixed(1)} km</div>
+                </div>
+            </div>
+            <div class="mt-2 grid grid-cols-4 gap-2">
+                ${[{label:'Vor 3 Wo', km: getWeekKm(addDays(prevMonday,-7))}, {label:'Vor 2 Wo', km: kwPrev}, {label:'Vorwoche', km: kwLast}, {label:'Diese Woche', km: kwThis}].map(w => {
+                    const maxKm = Math.max(kwThis, kwLast, kwPrev, getWeekKm(addDays(prevMonday,-7)), 1);
+                    const h = Math.round((w.km / maxKm) * 48);
+                    return `<div class="text-center">
+                        <div class="flex items-end justify-center h-12"><div class="w-6 rounded-t ${w.label==='Diese Woche'?'bg-blue-500':'bg-slate-300 dark:bg-slate-700'}" style="height:${h}px"></div></div>
+                        <div class="text-[10px] font-bold text-slate-600 dark:text-slate-400 mt-1">${w.km.toFixed(0)} km</div>
+                        <div class="text-[9px] text-slate-400">${w.label}</div>
+                    </div>`;
+                }).join('')}
+            </div>`;
+        }
+
+        // --- RACE-DAY CHECKLISTE ---
+        let activeChecklistRaceId = null;
+        function openChecklistModal(raceId) {
+            const r = state.races.find(r => r.id === raceId); if(!r) return;
+            activeChecklistRaceId = raceId;
+            if(!state.raceChecklists[raceId]) state.raceChecklists[raceId] = {};
+            document.getElementById('checklist-modal-title').textContent = `🏁 ${r.name} – Checkliste`;
+            renderChecklistModal();
+            document.getElementById('race-checklist-modal').classList.remove('hidden');
+        }
+        function closeChecklistModal() { document.getElementById('race-checklist-modal').classList.add('hidden'); activeChecklistRaceId = null; }
+        function renderChecklistModal() {
+            const id = activeChecklistRaceId; if(!id) return;
+            if(!state.raceChecklists[id]) state.raceChecklists[id] = {};
+            const checks = state.raceChecklists[id];
+            const container = document.getElementById('checklist-categories'); container.innerHTML = '';
+            let total = 0, done = 0;
+            Object.entries(defaultChecklist).forEach(([cat, items]) => {
+                let itemsHTML = items.map(item => {
+                    const key = cat + '|' + item;
+                    const checked = checks[key] || false;
+                    total++; if(checked) done++;
+                    return `<label class="flex items-center gap-2 py-1 cursor-pointer group">
+                        <input type="checkbox" ${checked?'checked':''} onchange="toggleChecklistItem(${id},'${cat}','${item.replace(/'/g,"\\'")}',this.checked)"
+                            class="w-4 h-4 rounded accent-emerald-500 cursor-pointer">
+                        <span class="text-xs ${checked?'line-through text-slate-400':'text-slate-700 dark:text-slate-300'} group-hover:text-slate-900 dark:group-hover:text-white transition">${item}</span>
+                    </label>`;
+                }).join('');
+                container.innerHTML += `<div>
+                    <div class="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">${cat}</div>
+                    <div class="bg-slate-50 dark:bg-slate-950 border dark:border-slate-800 rounded-lg px-3 py-1">${itemsHTML}</div>
+                </div>`;
+            });
+            const pct = total > 0 ? Math.round(done/total*100) : 0;
+            document.getElementById('checklist-progress-text').innerHTML =
+                `<span class="${pct===100?'text-emerald-600 dark:text-emerald-400':'text-slate-500'}">${done}/${total} erledigt ${pct===100?'✅':''}</span>`;
+        }
+        function toggleChecklistItem(raceId, cat, item, checked) {
+            if(!state.raceChecklists[raceId]) state.raceChecklists[raceId] = {};
+            state.raceChecklists[raceId][cat+'|'+item] = checked;
+            saveState(); renderChecklistModal();
+        }
+        function resetChecklist() {
+            if(!activeChecklistRaceId) return;
+            state.raceChecklists[activeChecklistRaceId] = {};
+            saveState(); renderChecklistModal();
+        }
+
+        // --- JAHRESRÜCKBLICK ---
+        function renderJahresrueckblick() {
+            const el = document.getElementById('jahresrueckblick-content'); if(!el) return;
+            const yr = state.year;
+            const acts = state.trackedActivities.filter(a => a.date && a.date.startsWith(yr+''));
+
+            const sportTotals = {};
+            const sportCounts = {};
+            let totalMinutes = 0;
+            acts.forEach(a => {
+                if(!sportTotals[a.sport]) { sportTotals[a.sport] = 0; sportCounts[a.sport] = 0; }
+                sportTotals[a.sport] += a.vol || 0;
+                sportCounts[a.sport]++;
+                if(sportConfig[a.sport]?.unit === 'min') totalMinutes += a.vol || 0;
+                else if(a.duration) totalMinutes += a.duration;
+            });
+
+            const laufKm = acts.filter(a=>a.sport==='Laufen'||a.sport.includes('Laufband')).reduce((s,a)=>s+(a.vol||0),0);
+            const radMin = acts.filter(a=>a.sport.includes('Rennrad')).reduce((s,a)=>s+(a.vol||0),0);
+            const schwimmM = acts.filter(a=>a.sport==='Schwimmen').reduce((s,a)=>s+(a.vol||0),0);
+            const kraftMin = acts.filter(a=>a.sport==='Krafttraining').reduce((s,a)=>s+(a.vol||0),0);
+
+            const longestRun = acts.filter(a=>a.sport==='Laufen'||a.sport.includes('Laufband')).reduce((max,a)=>a.vol>max?a.vol:max, 0);
+            const longestRide = acts.filter(a=>a.sport.includes('Rennrad')).reduce((max,a)=>a.vol>max?a.vol:max, 0);
+
+            // Aktivste Monate
+            const monthCounts = Array(12).fill(0);
+            acts.forEach(a => { const m = parseInt((a.date||'').split('-')[1])-1; if(m>=0&&m<12) monthCounts[m]++; });
+            const maxMonthCount = Math.max(...monthCounts, 1);
+            const monthNames = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+
+            const races = state.races.filter(r => r.date && r.date.startsWith(yr+''));
+            const healthIssues = (state.healthCases||[]).filter(c => c.startDate && c.startDate.startsWith(yr+''));
+
+            const statCard = (icon, value, label, color='text-blue-600 dark:text-blue-400') =>
+                `<div class="bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-xl p-4 text-center shadow-sm">
+                    <div class="text-2xl mb-1">${icon}</div>
+                    <div class="text-2xl font-black ${color}">${value}</div>
+                    <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">${label}</div>
+                </div>`;
+
+            const sportsOrder = ['Laufen','Indoor Laufen (Laufband)','Rennrad','Indoor Rennrad','Schwimmen','Krafttraining','Stretching/Yoga','Meditation'];
+            const sportRows = sportsOrder.filter(s => sportTotals[s] > 0).map(s => {
+                const style = getSportStyle(s);
+                return `<div class="flex items-center justify-between ${style.colorClass} border rounded-lg px-3 py-2 text-xs font-semibold">
+                    <span><i class="fa-solid ${style.icon} mr-2"></i>${s}</span>
+                    <span>${sportTotals[s].toFixed(sportConfig[s]?.unit==='km'?1:0)} ${sportConfig[s]?.unit||''}
+                        <span class="text-slate-400 font-normal ml-2">${sportCounts[s]} Einheiten</span>
+                    </span>
+                </div>`;
+            }).join('');
+
+            const monthBars = monthNames.map((m,i) => {
+                const h = Math.round((monthCounts[i]/maxMonthCount)*56);
+                return `<div class="text-center flex-1">
+                    <div class="flex items-end justify-center h-14"><div class="w-full max-w-[28px] rounded-t bg-blue-400 dark:bg-blue-600" style="height:${h}px;min-height:${monthCounts[i]>0?2:0}px"></div></div>
+                    <div class="text-[9px] text-slate-400 mt-1">${monthCounts[i]}</div>
+                    <div class="text-[9px] text-slate-500 font-bold">${m}</div>
+                </div>`;
+            }).join('');
+
+            el.innerHTML = `
+                <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl p-6 text-white shadow-lg mb-6">
+                    <h2 class="text-2xl font-black">Jahresrückblick ${yr} 🏅</h2>
+                    <p class="text-blue-200 text-sm mt-1">${acts.length} Einheiten protokolliert – hier ist dein Jahr auf einen Blick.</p>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                    ${statCard('🏃', laufKm.toFixed(0)+' km', 'Lauf-Kilometer', 'text-orange-600 dark:text-orange-400')}
+                    ${statCard('🚴', (radMin/60).toFixed(0)+' h', 'Rad-Stunden', 'text-blue-600 dark:text-blue-400')}
+                    ${statCard('🏊', (schwimmM/1000).toFixed(1)+' km', 'Schwimm-Kilometer', 'text-cyan-600 dark:text-cyan-400')}
+                    ${statCard('💪', (kraftMin/60).toFixed(0)+' h', 'Kraft-Stunden', 'text-purple-600 dark:text-purple-400')}
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                    ${statCard('📅', acts.length, 'Trainingstage')}
+                    ${statCard('🏆', races.length, 'Wettkämpfe')}
+                    ${statCard('👟', longestRun.toFixed(1)+' km', 'Längste Laufeinheit', 'text-orange-500')}
+                    ${statCard('⚡', longestRide+' min', 'Längste Radeinheit', 'text-blue-500')}
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+                        <h3 class="text-sm font-black uppercase tracking-wide text-slate-600 dark:text-slate-400 mb-3">📊 Aktivitäten pro Monat</h3>
+                        <div class="flex gap-1 items-end">${monthBars}</div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+                        <h3 class="text-sm font-black uppercase tracking-wide text-slate-600 dark:text-slate-400 mb-3">🏅 Volumen nach Sportart</h3>
+                        <div class="space-y-2">${sportRows || '<p class="text-slate-400 text-xs italic">Noch keine Aktivitäten in '+yr+'</p>'}</div>
+                    </div>
+                </div>
+
+                ${races.length > 0 ? `<div class="bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-xl p-5 shadow-sm mb-6">
+                    <h3 class="text-sm font-black uppercase tracking-wide text-slate-600 dark:text-slate-400 mb-3">🏆 Wettkämpfe ${yr}</h3>
+                    <div class="space-y-2">${races.map(r=>`<div class="flex items-center justify-between bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-900 rounded-lg px-3 py-2 text-xs font-semibold"><span>🏆 ${r.name}</span><span class="text-slate-500">${formatDateDe(r.date)}</span></div>`).join('')}</div>
+                </div>` : ''}
+
+                ${healthIssues.length > 0 ? `<div class="bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+                    <h3 class="text-sm font-black uppercase tracking-wide text-slate-600 dark:text-slate-400 mb-3">🩺 Gesundheitsereignisse ${yr}</h3>
+                    <div class="space-y-2">${healthIssues.map(c=>`<div class="flex items-center justify-between ${c.type==='Krankheit'?'bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-900':'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-900'} border rounded-lg px-3 py-2 text-xs font-semibold"><span>${c.type==='Krankheit'?'🤒':'🤕'} ${c.title}</span><span class="text-slate-500">${formatDateDe(c.startDate)} ${c.status==='resolved'?'→ '+formatDateDe(c.resolvedDate):'(aktiv)'}</span></div>`).join('')}</div>
+                </div>` : ''}
+            `;
+        }
+
+        // --- FIT FILE IMPORT ---
+        function fitDragOver(e) { e.preventDefault(); document.getElementById('fit-dropzone').classList.add('border-blue-500','bg-blue-50/50','dark:bg-blue-950/30'); }
+        function fitDragLeave(e) { document.getElementById('fit-dropzone').classList.remove('border-blue-500','bg-blue-50/50','dark:bg-blue-950/30'); }
+        function fitDrop(e) { e.preventDefault(); fitDragLeave(e); fitFilesSelected(e.dataTransfer.files); }
+        function fitClearLog() {
+            document.getElementById('fit-import-log').classList.add('hidden');
+            document.getElementById('fit-import-log-content').innerHTML = '';
+            document.getElementById('fit-import-summary').classList.add('hidden');
+        }
+
+        function fitFilesSelected(files) {
+            if(!files || files.length === 0) return;
+            const fileArr = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.fit'));
+            if(fileArr.length === 0) { alert('Keine .fit Dateien gefunden.'); return; }
+
+            const logEl = document.getElementById('fit-import-log');
+            const logContent = document.getElementById('fit-import-log-content');
+            const summary = document.getElementById('fit-import-summary');
+            const progressArea = document.getElementById('fit-progress-area');
+            const progressBar = document.getElementById('fit-progress-bar');
+            const progressLabel = document.getElementById('fit-progress-label');
+            const progressCount = document.getElementById('fit-progress-count');
+
+            logEl.classList.remove('hidden');
+            logContent.innerHTML = '';
+            summary.classList.add('hidden');
+            progressArea.classList.remove('hidden');
+            progressBar.style.width = '0%';
+
+            let imported = 0, skipped = 0, failed = 0, done = 0;
+
+            const addLog = (icon, text, cls='text-slate-600 dark:text-slate-400') => {
+                logContent.innerHTML += `<div class="flex items-start gap-2 py-0.5 border-b dark:border-slate-800 last:border-0 ${cls}"><span class="flex-shrink-0">${icon}</span><span>${text}</span></div>`;
+                logContent.scrollTop = logContent.scrollHeight;
+            };
+
+            const processNext = (idx) => {
+                if(idx >= fileArr.length) {
+                    progressBar.style.width = '100%';
+                    progressLabel.textContent = 'Import abgeschlossen';
+                    progressCount.textContent = '';
+                    summary.classList.remove('hidden');
+                    summary.innerHTML = `✅ ${imported} importiert &nbsp;·&nbsp; ⏭️ ${skipped} bereits vorhanden &nbsp;·&nbsp; ❌ ${failed} Fehler`;
+                    saveState(); renderTrackCalendar(); renderBelastungsampel();
+                    return;
+                }
+                const file = fileArr[idx];
+                progressLabel.textContent = `Verarbeite: ${file.name}`;
+                progressCount.textContent = `${idx+1} / ${fileArr.length}`;
+                progressBar.style.width = `${Math.round((idx/fileArr.length)*100)}%`;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const buf = e.target.result;
+                        const result = parseFitBuffer(new DataView(buf), file.name);
+                        if(!result) { failed++; addLog('❌', `${file.name} – konnte nicht gelesen werden`, 'text-red-600 dark:text-red-400'); }
+                        else if(result.duplicate) { skipped++; addLog('⏭️', `${file.name} – bereits vorhanden (${result.date})`, 'text-slate-400'); }
+                        else {
+                            state.trackedActivities.push(result.activity);
+                            imported++;
+                            const cfg = sportConfig[result.activity.sport] || {};
+                            addLog('✅', `<strong>${result.activity.sport}</strong> – ${result.activity.date} – ${result.activity.vol} ${cfg.unit||''}${result.activity.hr ? ' · ❤️'+result.activity.hr : ''}${result.activity.hm ? ' · 🏔️'+result.activity.hm+'m' : ''}`, 'text-emerald-700 dark:text-emerald-400');
+                        }
+                    } catch(err) { failed++; addLog('❌', `${file.name} – Fehler: ${err.message}`, 'text-red-600 dark:text-red-400'); }
+                    done++;
+                    processNext(idx + 1);
+                };
+                reader.onerror = () => { failed++; done++; addLog('❌', `${file.name} – Lesefehler`, 'text-red-600'); processNext(idx+1); };
+                reader.readAsArrayBuffer(file);
+            };
+            processNext(0);
+        }
+
+        function parseFitBuffer(view, filename) {
+            // FIT file magic check
+            if(view.byteLength < 14) return null;
+            const headerSize = view.getUint8(0);
+            const magic = view.getUint32(8, true);
+            if(magic !== 0x5449462E) return null; // '.FIT'
+
+            // We parse FIT by scanning for known message types using a minimal approach
+            // FIT is a binary protocol: header + records. Each record has a header byte.
+            // We extract: sport type, start time, total distance, total time, avg HR, total ascent
+            let pos = headerSize;
+            const end = view.byteLength - 2; // last 2 bytes = CRC
+
+            // Local message definitions storage
+            const localMsgDefs = {};
+
+            let sport = null, subSport = null;
+            let startTime = null, totalDistance = 0, totalElapsed = 0;
+            let avgHr = null, totalAscent = null, avgPower = null;
+            let timestamp = null;
+
+            const FIT_EPOCH = 631065600; // seconds between Unix epoch and FIT epoch (Dec 31 1989)
+
+            while(pos < end - 1) {
+                const recordHeader = view.getUint8(pos); pos++;
+                const isCompressed = (recordHeader & 0x80) !== 0;
+
+                if(isCompressed) {
+                    // Compressed timestamp record – skip (4 bits local num, 5 bits time offset, 1 byte data)
+                    const localNum = (recordHeader >> 5) & 0x03;
+                    const def = localMsgDefs[localNum];
+                    if(!def) break;
+                    pos += def.recordSize;
+                    continue;
+                }
+
+                const msgType = (recordHeader & 0x40) !== 0; // 1=definition, 0=data
+                const localMsgNum = recordHeader & 0x0F;
+
+                if(msgType) {
+                    // Definition message
+                    pos++; // reserved
+                    const arch = view.getUint8(pos); pos++; // architecture (0=little, 1=big)
+                    const littleEndian = arch === 0;
+                    const globalMsgNum = littleEndian ? view.getUint16(pos, true) : view.getUint16(pos, false); pos += 2;
+                    const numFields = view.getUint8(pos); pos++;
+                    const fields = [];
+                    let recordSize = 0;
+                    for(let i = 0; i < numFields; i++) {
+                        const fieldDef = view.getUint8(pos); pos++;
+                        const fieldSize = view.getUint8(pos); pos++;
+                        const baseType = view.getUint8(pos); pos++;
+                        fields.push({ fieldDef, fieldSize, baseType });
+                        recordSize += fieldSize;
+                    }
+                    // Skip developer fields if present
+                    if(recordHeader & 0x20) {
+                        const numDevFields = view.getUint8(pos); pos++;
+                        for(let i = 0; i < numDevFields; i++) { pos += 3; }
+                    }
+                    localMsgDefs[localMsgNum] = { globalMsgNum, fields, recordSize, littleEndian };
+                } else {
+                    // Data message
+                    const def = localMsgDefs[localMsgNum];
+                    if(!def) { pos++; continue; }
+
+                    const startPos = pos;
+                    const le = def.littleEndian;
+
+                    def.fields.forEach(f => {
+                        if(pos + f.fieldSize > end) { pos += f.fieldSize; return; }
+                        let val = null;
+                        try {
+                            if(f.fieldSize === 1) val = view.getUint8(pos);
+                            else if(f.fieldSize === 2) val = le ? view.getUint16(pos, true) : view.getUint16(pos, false);
+                            else if(f.fieldSize === 4) val = le ? view.getUint32(pos, true) : view.getUint32(pos, false);
+                        } catch(e) { pos += f.fieldSize; return; }
+
+                        // Global msg 0 = File ID, 12 = Sport, 18 = Session (summary)
+                        if(def.globalMsgNum === 12) { // Sport message
+                            if(f.fieldDef === 0) sport = val;       // sport enum
+                            if(f.fieldDef === 1) subSport = val;    // sub_sport enum
+                        }
+                        if(def.globalMsgNum === 18) { // Session message
+                            if(f.fieldDef === 253) timestamp = val;
+                            if(f.fieldDef === 2)  startTime = val;
+                            if(f.fieldDef === 7)  totalDistance = val; // cm → needs /100000 for km
+                            if(f.fieldDef === 7 && f.fieldSize === 4) totalDistance = val;
+                            if(f.fieldDef === 9)  totalElapsed = val;  // seconds * 1000
+                            if(f.fieldDef === 16) avgHr = (val < 250) ? val : null;
+                            if(f.fieldDef === 22) totalAscent = (val < 30000) ? val : null;
+                            if(f.fieldDef === 20) avgPower = (val < 2000 && val > 0) ? val : null;
+                        }
+                        pos += f.fieldSize;
+                    });
+                    // Ensure we advance correctly
+                    if(pos !== startPos + def.recordSize) pos = startPos + def.recordSize;
+                }
+            }
+
+            // Map FIT sport enum to app sport
+            const fitSportMap = {
+                1: 'Laufen', 2: 'Rennrad', 5: 'Schwimmen', 10: 'Krafttraining',
+                11: 'Krafttraining', 14: 'Laufen', 15: 'Rennrad', 17: 'Schwimmen',
+                4: 'Rennrad' // cycling
+            };
+            // SubSport overrides: 6=treadmill, 58=virtual_ride, 48=indoor_cycling
+            const fitSubSportMap = { 6: 'Indoor Laufen (Laufband)', 58: 'Indoor Rennrad', 48: 'Indoor Rennrad' };
+
+            let mappedSport = fitSportMap[sport] || null;
+            if(subSport !== null && fitSubSportMap[subSport]) mappedSport = fitSubSportMap[subSport];
+
+            // Fallback: guess from filename (e.g. "Run_2024-03-01.fit")
+            if(!mappedSport) {
+                const fn = filename.toLowerCase();
+                if(fn.includes('run') || fn.includes('lauf')) mappedSport = 'Laufen';
+                else if(fn.includes('ride') || fn.includes('rad') || fn.includes('bike') || fn.includes('cycl')) mappedSport = 'Rennrad';
+                else if(fn.includes('swim') || fn.includes('schwimm')) mappedSport = 'Schwimmen';
+                else if(fn.includes('strength') || fn.includes('weight') || fn.includes('kraft')) mappedSport = 'Krafttraining';
+                else mappedSport = 'Krafttraining'; // last fallback
+            }
+
+            const ts = startTime || timestamp;
+            if(!ts) return null;
+            const dateObj = new Date((ts + FIT_EPOCH) * 1000);
+            const dateStr = formatDateISO(dateObj);
+
+            // Duplicate check: same date + sport + approximate distance
+            const distKm = totalDistance / 100000;
+            const durationMin = Math.round((totalElapsed / 1000) || (totalElapsed));
+            // Some FIT files store elapsed in seconds directly, others * 1000
+            const durationFixed = durationMin > 10000 ? Math.round(durationMin / 1000) : durationMin;
+
+            const dupCheck = state.trackedActivities.find(a =>
+                a.date === dateStr && a.sport === mappedSport &&
+                Math.abs((a.km || 0) - distKm) < 0.3
+            );
+            if(dupCheck) return { duplicate: true, date: dateStr };
+
+            const cfg = sportConfig[mappedSport] || {};
+            let vol;
+            if(cfg.unit === 'km') vol = parseFloat(distKm.toFixed(2));
+            else if(cfg.unit === 'm') vol = Math.round(distKm * 1000);
+            else vol = durationFixed;
+
+            const paceSeconds = (distKm > 0 && durationFixed > 0) ? (durationFixed * 60) / distKm : null;
+
+            return {
+                duplicate: false,
+                date: dateStr,
+                activity: {
+                    id: Date.now() + Math.random(),
+                    date: dateStr,
+                    sport: mappedSport,
+                    vol: vol || 0,
+                    km: parseFloat(distKm.toFixed(2)),
+                    duration: durationFixed,
+                    hr: avgHr,
+                    hm: totalAscent,
+                    watt: (mappedSport === 'Indoor Rennrad') ? avgPower : null,
+                    pace: paceSeconds,
+                    comment: ''
+                }
+            };
+        }
+
+        // --- MOBILE NAVIGATION ---
+        const tabLabels = {
+            dashboard: 'Dashboard', planer: 'Planer', tracker: 'Tracker',
+            vergleich: 'Plan vs. Ist', gesundheit: 'Gesundheit', aktivitaeten: 'Aktivitäten',
+            jahresrueckblick: 'Jahresrückblick', strava: 'FIT Import'
+        };
+        const bottomNavTabs = ['dashboard', 'tracker', 'planer', 'gesundheit'];
+
+        function openMobileMenu() {
+            document.getElementById('mobile-menu-overlay').classList.add('open');
+            document.getElementById('mobile-menu-drawer').style.transform = 'translateX(0)';
+        }
+        function closeMobileMenu() {
+            document.getElementById('mobile-menu-overlay').classList.remove('open');
+            document.getElementById('mobile-menu-drawer').style.transform = 'translateX(-100%)';
+        }
+
+        function updateMobileNav(tabId) {
+            // Update bottom nav active state
+            bottomNavTabs.forEach(t => {
+                const btn = document.getElementById('mob-btn-' + t);
+                if(btn) {
+                    if(t === tabId) {
+                        btn.classList.remove('text-slate-400');
+                        btn.classList.add('text-blue-600', 'dark:text-blue-400', 'bg-blue-50', 'dark:bg-blue-950/50');
+                    } else {
+                        btn.classList.add('text-slate-400');
+                        btn.classList.remove('text-blue-600', 'dark:text-blue-400', 'bg-blue-50', 'dark:bg-blue-950/50');
+                    }
+                }
+            });
+            // Update mobile header label
+            const labelEl = document.getElementById('mobile-active-tab-label');
+            if(labelEl) labelEl.textContent = tabLabels[tabId] || '';
+            // Update mobile year display
+            const mYr = document.getElementById('mobile-year-display');
+            if(mYr) mYr.textContent = state.year;
+        }
+
+        // --- DARK MODE THEME CONTROLLER ---
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                html.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // --- RUNTIME BOOTSTRAP ---
+        async function appInit() {
+            const raceForm = document.getElementById('race-form');
+            if(raceForm) {
+                raceForm.addEventListener('submit', function(e){
+                    e.preventDefault();
+                    const newRace = { id: Date.now(), name: document.getElementById('race-name').value.trim(), date: document.getElementById('race-date').value };
+                    state.races.push(newRace);
+                    saveState(); this.reset();
+                    initGeneratorUI(); renderDashboard(); renderPlanCalendar(); renderTrackCalendar();
+                });
+            }
+            const goalForm = document.getElementById('goal-form');
+            if(goalForm) {
+                goalForm.addEventListener('submit', function(e){
+                    e.preventDefault();
+                    state.goals.push({ id: Date.now(), text: document.getElementById('goal-text').value.trim(), date: document.getElementById('goal-date').value });
+                    saveState(); this.reset(); renderDashboard();
+                });
+            }
+            initGeneratorUI(); initAnatomyDropdowns(); renderBadges(); updateGlobalYearDisplay(); renderDashboard(); renderBelastungsampel(); switchTab('dashboard');
+        }
+
+        // Apply saved theme immediately on load
+        window.onload = function() {
+            if(localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        };
+
+        // Supabase auth listener
+        sb.auth.onAuthStateChange(async (event, session) => {
+            if(session?.user) {
+                currentUser = session.user;
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('app-main').classList.remove('hidden');
+                await loadState();
+                await appInit();
+            } else {
+                currentUser = null;
+                document.getElementById('login-screen').classList.remove('hidden');
+                document.getElementById('app-main').classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
